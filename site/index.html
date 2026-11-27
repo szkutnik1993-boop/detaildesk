@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0E0F11" />
     <meta name="color-scheme" content="dark" />
     <title>DetailDesk – aplikacja dla studiów detailingu</title>
-    <meta name="description" content="Rezerwacje online, wyceny, protokoły przyjęcia z pomiarem lakieru i postęp prac dla klientów – w jednej aplikacji na telefonie. 30 dni za darmo." />
+    <meta name="description" content="DetailDesk – rezerwacje online, kalendarz i protokół przyjęcia auta dla studiów detailingowych." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <style>
@@ -32,6 +32,20 @@
       .card b { color: var(--gold); }
       .final { text-align: center; padding: 30px 0 60px; }
       footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; padding: 22px 0 40px; display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: space-between; }
+      .pricing { padding: 20px 0 10px; }
+      .pricing h2 { font-size: clamp(26px, 4vw, 36px); margin: 0 0 8px; }
+      .small-lead { font-size: 17px; margin-bottom: 22px; }
+      .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; align-items: stretch; }
+      .plan { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px 20px; position: relative; }
+      .plan.featured { border: 2px solid var(--gold); background: radial-gradient(120% 140% at 100% 0%, rgba(201,164,92,0.18), transparent 60%), var(--card); }
+      .plan-badge { position: absolute; top: -12px; left: 18px; background: var(--gold); color: #17130b; font-weight: 700; font-size: 12px; padding: 4px 10px; border-radius: 999px; letter-spacing: 0.3px; }
+      .plan-name { color: var(--muted); font-size: 14px; margin-bottom: 6px; }
+      .plan-price { font-size: 34px; font-weight: 800; }
+      .plan.featured .plan-price { color: var(--gold); }
+      .plan-price span { font-size: 16px; font-weight: 500; color: var(--muted); }
+      .plan-note { color: var(--muted); font-size: 14px; margin: 4px 0 10px; }
+      .plan ul { margin: 0; padding-left: 18px; color: #d4d6d9; font-size: 14px; }
+      .vat { color: var(--muted); font-size: 13px; margin: 14px 0 0; }
     </style>
   </head>
   <body>
@@ -57,8 +71,43 @@
         <div class="card"><h3>Karta auta i przypomnienia</h3><p>Historia usług i użytej chemii, zdjęcia przed/po oraz przypomnienia o serwisie powłoki po 6 miesiącach.</p></div>
       </section>
 
-      <section class="final">
-        <a class="cta" href="https://app.detaildesk.pl/rejestracja/">Wypróbuj 30 dni za darmo →</a>
+      <section class="pricing" id="cennik" aria-labelledby="cennik-h">
+        <h2 id="cennik-h">Cennik</h2>
+        <p class="lead small-lead">Zacznij od 30 dni za darmo, bez karty. Potem jeden prosty abonament – bez prowizji od rezerwacji.</p>
+        <div class="plans">
+          <div class="plan">
+            <div class="plan-name">Okres próbny</div>
+            <div class="plan-price">0 zł</div>
+            <div class="plan-note">30 dni za darmo, bez karty</div>
+            <ul>
+              <li>wszystkie funkcje</li>
+              <li>bez zobowiązań</li>
+            </ul>
+          </div>
+          <div class="plan featured">
+            <div class="plan-badge">Oferta założycielska</div>
+            <div class="plan-name">Dla pierwszych 10 studiów</div>
+            <div class="plan-price">29 zł <span>/ mies.</span></div>
+            <div class="plan-note">na zawsze – przez cały czas nieprzerwanego abonamentu</div>
+            <ul>
+              <li>wszystkie funkcje</li>
+              <li>cena zablokowana na stałe</li>
+            </ul>
+          </div>
+          <div class="plan">
+            <div class="plan-name">Abonament</div>
+            <div class="plan-price">49 zł <span>/ mies.</span></div>
+            <div class="plan-note">płatne miesięcznie, z góry</div>
+            <ul>
+              <li>wszystkie funkcje</li>
+              <li>możesz zrezygnować w każdej chwili</li>
+            </ul>
+          </div>
+        </div>
+        <p class="vat">Cena końcowa, zwolnienie z VAT (art. 113 ust. 1)</p>
+        <div class="final">
+          <a class="cta" href="https://app.detaildesk.pl/rejestracja/">Załóż konto za darmo →</a>
+        </div>
       </section>
 
       <footer>

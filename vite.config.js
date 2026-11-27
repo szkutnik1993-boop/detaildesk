@@ -27,9 +27,9 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'DetailDesk – ARC Detailing',
+        name: 'DetailDesk',
         short_name: 'DetailDesk',
-        description: 'Zapytania, wyceny, przyjęcia aut i postęp prac dla studia detailingu',
+        description: 'DetailDesk – rezerwacje online, kalendarz i protokół przyjęcia auta dla studiów detailingowych.',
         lang: 'pl',
         start_url: './',
         scope: './',

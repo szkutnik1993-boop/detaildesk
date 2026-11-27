@@ -200,6 +200,23 @@ try {
   const pays = (await A.c.rpc('admin_list_payments')).data.filter((p) => p.studio_id === studioB);
   ok(pays.some((p) => p.kind === 'trial') && pays.some((p) => p.amount_cents === 9900 && p.months === 1), 'historia płatności: okres próbny + wpłata 99 zł');
   ok(!(await A.c.rpc('admin_extend_studio', { p_studio: studioB, p_months: 12 })).error, 'administrator: Przedłuż o 12 miesięcy');
+
+  // wpłaty (ewidencja sprzedaży) – tylko administrator
+  const untilBefore = new Date((await B.c.rpc('my_studio')).data.active_until);
+  const paid = await A.c.rpc('admin_mark_paid', { p_studio: studioB, p_amount_cents: 2900, p_invoice: `FV TEST ${ts}`, p_paid_on: null, p_months: 1 });
+  ok(!paid.error && paid.data?.id, 'administrator: „Oznacz jako opłacone” (29 zł)', paid.error?.message || '');
+  const untilAfter = new Date((await B.c.rpc('my_studio')).data.active_until);
+  ok(untilAfter > untilBefore, 'po wpłacie abonament przedłużony o miesiąc');
+  const salesA = (await A.c.rpc('admin_list_sales')).data || [];
+  const mine = salesA.find((p) => p.invoice_number === `FV TEST ${ts}`);
+  ok(mine && mine.amount_cents === 2900 && mine.studio_name === `Test Studio ${ts}` && mine.paid_on, 'ewidencja: data, studio, kwota, nr faktury');
+  ok(Object.keys(mine).every((k) => ['id', 'paid_on', 'studio_id', 'studio_name', 'studio_nip', 'amount_cents', 'invoice_number', 'months', 'created_at'].includes(k)), 'ewidencja bez danych klientów studiów');
+  ok((await A.c.from('payments').select('id')).data.length >= 1, 'administrator widzi tabelę payments');
+  ok(((await B.c.from('payments').select('id')).data || []).length === 0, 'RLS: studio nie widzi tabeli payments');
+  ok(!!(await B.c.from('payments').insert({ studio_id: studioB, amount_cents: 100, studio_name: 'x' })).error, 'studio nie dopisze wpłaty');
+  ok(!!(await B.c.rpc('admin_mark_paid', { p_studio: studioB, p_amount_cents: 100 })).error, 'studio nie oznaczy się jako opłacone');
+  ok(!!(await B.c.rpc('admin_list_sales')).error, 'studio nie pobierze ewidencji sprzedaży');
+  ok(!!(await A.c.rpc('admin_mark_paid', { p_studio: studioB, p_amount_cents: 0 })).error, 'wpłata 0 zł odrzucona');
   ok(!!(await A.c.rpc('admin_extend_studio', { p_studio: studioB, p_months: 5 })).error, 'inne okresy niż 1/12 mies. odrzucone');
 
   // ---------- 7. notatki, blokada, ogłoszenie ----------
@@ -235,7 +252,8 @@ try {
         });
       }
     }
-    await sql(`delete from public.studios where id = '${studioB}'`).catch((e) => console.error(e.message));
+    // wpłaty testowe (ewidencja chroni je przed usunięciem razem ze studiem) – usuwane jawnie
+    await sql(`delete from public.payments where studio_id = '${studioB}'; delete from public.studios where id = '${studioB}'`).catch((e) => console.error(e.message));
   }
   if (userB) await fetch(`${URL_}/auth/v1/admin/users/${userB}`, { method: 'DELETE', headers: { apikey: E.SERVICE_KEY, Authorization: `Bearer ${E.SERVICE_KEY}` } });
   await sql(`delete from public.feedback where message like 'Test pomysłu %'; delete from public.request_log where created_at >= '${startedAt}';`).catch(() => {});

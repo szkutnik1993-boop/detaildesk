@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import Icon from '../components/Icon.jsx';
 import { Empty, Field, Header, Section } from '../components/ui.jsx';
 import { useUI } from '../store.jsx';
-import { adminExtendStudio, adminListFeedback, adminListPayments, adminListStudios, adminSetAnnouncement, adminSetBlocked, adminSetFeedbackStatus, adminSetNotes } from '../lib/db.js';
+import { adminExtendStudio, adminListFeedback, adminListSales, adminListStudios, adminMarkPaid, adminSetAnnouncement, adminSetBlocked, adminSetFeedbackStatus, adminSetNotes } from '../lib/db.js';
+import { QUARTER_LIMIT_CENTS, defaultPriceCents, limitLevel, quarterRange, salesCsv, sumInRange } from '../lib/revenue.js';
+import { downloadBlob } from '../lib/utils.js';
 import { studioStatus } from '../lib/subscription.js';
 import { formatMoney } from '../lib/pricing.js';
-import { fmtDate, fmtDateTime, toISO } from '../lib/dates.js';
+import { fmtDate, fmtDateTime, toISO, todayISO } from '../lib/dates.js';
 import { ownerCall, supabase } from '../lib/supabase.js';
 import { bookingUrl } from '../config.js';
 
@@ -19,23 +21,35 @@ const monthStart = () => {
 const daysAgo = (ts) => (ts ? Math.floor((Date.now() - new Date(ts).getTime()) / 86400000) : null);
 const STATE_CLS = { trial: 'st-planned', paid: 'st-ready', lifetime: 'st-ready', expired: 'st-done' };
 
-function StudioCard({ s, reload }) {
+function StudioCard({ s, studios, reload }) {
   const ui = useUI();
   const [open, setOpen] = useState(false);
   const [notes, setNotes] = useState(s.notes || '');
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState(() => String(defaultPriceCents(s, studios) / 100));
+  const [invoice, setInvoice] = useState('');
+  const [paidOn, setPaidOn] = useState(todayISO());
   const st = s.blocked ? { label: 'Zablokowane', state: 'expired', daysLeft: 0 } : studioStatus(s);
   const idle = daysAgo(s.last_sign_in);
   const risk = !s.blocked && st.state !== 'expired' && (idle === null || idle >= 14 || Number(s.bookings_month) + Number(s.jobs_month) === 0);
   const booking = bookingUrl(s.slug);
 
+  // przedłużenie bez wpłaty (np. gratis); wpłaty – „Oznacz jako opłacone”
   const extend = (months) =>
     ui.run('Przedłużam…', async () => {
-      const cents = amount ? Math.round(Number(amount.replace(',', '.')) * 100) : null;
-      if (!confirm(`Przedłużyć „${s.name}” o ${months} mies.${cents ? ` (wpłata ${zl(cents)})` : ''}?`)) return;
-      const until = await adminExtendStudio(s.id, months, cents);
-      setAmount('');
+      if (!confirm(`Przedłużyć „${s.name}” o ${months} mies. bez rejestrowania wpłaty?`)) return;
+      const until = await adminExtendStudio(s.id, months, null);
       ui.toast(`Aktywne do ${fmtDate(toISO(new Date(until)))}`);
+      reload();
+    });
+
+  const markPaid = () =>
+    ui.run('Zapisuję wpłatę…', async () => {
+      const cents = Math.round(Number(String(amount).replace(',', '.')) * 100);
+      if (!(cents > 0)) throw new Error('Podaj kwotę wpłaty.');
+      if (!confirm(`Oznaczyć „${s.name}” jako opłacone: ${zl(cents)}, ${fmtDate(paidOn)}${invoice ? `, faktura ${invoice}` : ''}? Abonament przedłuży się o 1 miesiąc.`)) return;
+      const r = await adminMarkPaid(s.id, cents, invoice, paidOn);
+      setInvoice('');
+      ui.toast(`Opłacone ✓ Aktywne do ${fmtDate(toISO(new Date(r.active_until)))}`);
       reload();
     });
 
@@ -64,12 +78,27 @@ function StudioCard({ s, reload }) {
           <div className="small muted">Link: <a className="gold" href={booking} target="_blank" rel="noreferrer">{booking}</a> · łącznie zleceń: {s.jobs_total} · wpłaty łącznie: {zl(s.revenue_cents)}</div>
           {s.plan !== 'lifetime' && (
             <>
-              <Field label="Kwota wpłaty (zł, opcjonalnie – do historii płatności)">
-                <input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d,.]/g, ''))} placeholder="np. 99" />
-              </Field>
+              <div className="paid-box">
+                <div className="field-label">Wpłata za abonament</div>
+                <div className="grid3">
+                  <Field label="Kwota (zł)">
+                    <input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d,.]/g, ''))} />
+                  </Field>
+                  <Field label="Data wpłaty">
+                    <input type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} />
+                  </Field>
+                  <Field label="Nr faktury">
+                    <input value={invoice} onChange={(e) => setInvoice(e.target.value)} placeholder="np. FV 1/2026" />
+                  </Field>
+                </div>
+                <button className="btn primary block" style={{ marginTop: 0 }} onClick={markPaid}>
+                  <Icon name="check" /> Oznacz jako opłacone (+1 mies.)
+                </button>
+                <div className="small muted">Domyślnie {defaultPriceCents(s, studios) === 2900 ? '29 zł – oferta założycielska (pierwsze 10 studiów)' : '49 zł – cena regularna'}.</div>
+              </div>
               <div className="row gap">
-                <button className="btn primary grow" onClick={() => extend(1)}>Przedłuż o 1 miesiąc</button>
-                <button className="btn primary grow" onClick={() => extend(12)}>o 12 miesięcy</button>
+                <button className="btn grow" onClick={() => extend(1)}>Przedłuż bez wpłaty o 1 mies.</button>
+                <button className="btn grow" onClick={() => extend(12)}>o 12 mies.</button>
               </div>
             </>
           )}
@@ -144,7 +173,7 @@ export default function Admin() {
   const ui = useUI();
   const [tab, setTab] = useState('studios');
   const [studios, setStudios] = useState(null);
-  const [payments, setPayments] = useState([]);
+  const [sales, setSales] = useState([]);
   const [feedback, setFeedback] = useState([]);
   const [ann, setAnn] = useState({ title: '', body: '', current: null });
   const [err, setErr] = useState(null);
@@ -153,12 +182,12 @@ export default function Admin() {
     try {
       const [st, pay, fb, cur] = await Promise.all([
         adminListStudios(),
-        adminListPayments(),
+        adminListSales(),
         adminListFeedback(),
         supabase.from('announcements').select('*').eq('active', true).order('created_at', { ascending: false }).limit(1),
       ]);
       setStudios(st);
-      setPayments(pay);
+      setSales(pay);
       setFeedback(fb);
       setAnn((a) => ({ ...a, current: cur.data?.[0] || null }));
     } catch (e) {
@@ -175,9 +204,12 @@ export default function Admin() {
   const now = new Date();
   const states = studios.map((s) => (s.blocked ? 'blocked' : studioStatus(s, now).state));
   const count = (k) => states.filter((x) => x === k).length;
-  const ms = monthStart();
-  const monthPayments = payments.filter((p) => new Date(p.created_at) >= ms && p.amount_cents);
-  const revenue = monthPayments.reduce((a, p) => a + p.amount_cents, 0);
+  // przychód w bieżącym kwartale (data wpłaty, czas polski) i limit działalności nierejestrowanej
+  const q = quarterRange(todayISO());
+  const qRevenue = sumInRange(sales, q.start, q.end);
+  const lim = limitLevel(qRevenue);
+  const year = todayISO().slice(0, 4);
+  const exportCsv = (from, to, name) => downloadBlob(new Blob([salesCsv(sales, { from, to })], { type: 'text/csv;charset=utf-8' }), name);
   const newFb = feedback.filter((f) => f.status === 'nowe').length;
 
   return (
@@ -189,7 +221,29 @@ export default function Admin() {
         <div><b>{count('trial')}</b><span>próbnych</span></div>
         <div><b>{count('paid') + count('lifetime')}</b><span>aktywnych</span></div>
         <div><b>{count('expired') + count('blocked')}</b><span>wygasłych / zablok.</span></div>
-        <div className="wide"><b className="gold">{zl(revenue)}</b><span>przychód w tym miesiącu</span></div>
+      </div>
+
+      <div className={`card quarter quarter-${lim.level}`}>
+        <div className="row between">
+          <div>
+            <div className="small muted">Przychód – {q.label}</div>
+            <div className="quarter-sum">{zl(qRevenue)}</div>
+          </div>
+          <div className="right-col small">
+            <span className="muted">limit {zl(QUARTER_LIMIT_CENTS)}</span>
+            <b>{lim.pct.toFixed(1).replace('.', ',')}%</b>
+          </div>
+        </div>
+        <div className="limit-bar" role="progressbar" aria-valuenow={Math.round(lim.pct)} aria-valuemin={0} aria-valuemax={100} aria-label="Wykorzystanie kwartalnego limitu przychodu">
+          <div style={{ width: `${Math.min(100, lim.pct)}%` }} />
+        </div>
+        <div className="small muted">
+          {lim.level === 'danger' ? '⚠️ Ponad 95% limitu – rozważ rejestrację działalności.' : lim.level === 'warn' ? 'Ponad 80% limitu kwartalnego.' : `Do limitu zostało ${zl(lim.left)}.`}
+        </div>
+        <div className="row gap wrap" style={{ marginTop: 10 }}>
+          <button className="btn sm grow" onClick={() => exportCsv(q.start, q.end, `ewidencja-sprzedazy-${year}-Q${q.quarter}.csv`)}><Icon name="download" size={18} /> CSV – kwartał</button>
+          <button className="btn sm grow" onClick={() => exportCsv(`${year}-01-01`, `${year}-12-31`, `ewidencja-sprzedazy-${year}.csv`)}><Icon name="download" size={18} /> CSV – rok {year}</button>
+        </div>
       </div>
 
       <div className="tabs-inline wrap">
@@ -202,23 +256,22 @@ export default function Admin() {
       {tab === 'studios' && (
         <>
           <div className="small muted" style={{ marginBottom: 10 }}>Stuknij studio, aby przedłużyć, dodać notatkę lub zablokować. Widzisz tylko liczby – bez danych klientów studiów.</div>
-          {studios.map((s) => <StudioCard key={s.id} s={s} reload={load} />)}
+          {studios.map((s) => <StudioCard key={s.id} s={s} studios={studios} reload={load} />)}
         </>
       )}
 
       {tab === 'payments' && (
-        <Section title={`Historia przedłużeń · w tym miesiącu ${zl(revenue)}`}>
-          {payments.length === 0 && <Empty>Brak płatności.</Empty>}
-          {payments.map((p) => (
+        <Section title={`Ewidencja wpłat · ${q.label}: ${zl(qRevenue)}`}>
+          {sales.length === 0 && <Empty>Brak wpłat. Dodasz je przyciskiem „Oznacz jako opłacone” przy studiu.</Empty>}
+          {[...sales].reverse().map((p) => (
             <div key={p.id} className="card list-item">
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="h3 ellipsis">{p.studio_name}</div>
                 <div className="small muted">
-                  {fmtDateTime(p.created_at)} · {p.kind === 'trial' ? 'okres próbny 30 dni' : `+${p.months} mies.`} · {p.source}
-                  {p.active_until_after ? ` · do ${fmtDate(toISO(new Date(p.active_until_after)))}` : ''}
+                  {fmtDate(p.paid_on)}{p.invoice_number ? ` · ${p.invoice_number}` : ''}{p.studio_nip ? ` · NIP ${p.studio_nip}` : ' · brak NIP'}
                 </div>
               </div>
-              <strong className={p.amount_cents ? 'gold' : 'muted'}>{p.amount_cents ? zl(p.amount_cents) : '—'}</strong>
+              <strong className="gold">{zl(p.amount_cents)}</strong>
             </div>
           ))}
         </Section>

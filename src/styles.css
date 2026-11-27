@@ -381,3 +381,17 @@ details summary::-webkit-details-marker { display: none; }
 /* nieaktywny przycisk – wyraźnie wyszarzony */
 .btn:disabled, .btn[disabled] { opacity: 0.4; cursor: not-allowed; filter: saturate(0.4); }
 .btn:disabled:active { transform: none; }
+
+/* panel administratora: przychód kwartalny i limit */
+.quarter { margin-bottom: 14px; }
+.quarter-sum { font-family: 'Space Grotesk'; font-size: 30px; font-weight: 700; color: var(--gold); }
+.limit-bar { height: 12px; border-radius: 999px; background: var(--card-2); border: 1px solid var(--line); overflow: hidden; margin: 10px 0 6px; }
+.limit-bar > div { height: 100%; background: var(--gold); border-radius: 999px; transition: width 0.3s; }
+.quarter-warn .limit-bar > div { background: #e8c547; }
+.quarter-warn .quarter-sum { color: #e8c547; }
+.quarter-danger .limit-bar > div { background: var(--red); }
+.quarter-danger .quarter-sum { color: var(--red); }
+.quarter-danger { border-color: rgba(224,106,95,0.6); }
+.paid-box { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 14px; border: 1px solid rgba(201,164,92,0.4); background: var(--gold-soft); }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid3 > :last-child { grid-column: 1 / -1; }

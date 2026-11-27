@@ -173,3 +173,15 @@ export async function importAll(backup) {
     check(error);
   }
 }
+
+// --- ewidencja sprzedaży platformy (tylko administrator) ---
+export async function adminListSales() {
+  const { data, error } = await supabase.rpc('admin_list_sales');
+  check(error);
+  return data;
+}
+export async function adminMarkPaid(studioId, amountCents, invoice, paidOn) {
+  const { data, error } = await supabase.rpc('admin_mark_paid', { p_studio: studioId, p_amount_cents: amountCents, p_invoice: invoice || null, p_paid_on: paidOn || null, p_months: 1 });
+  check(error);
+  return data;
+}
