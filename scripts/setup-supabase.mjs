@@ -2,7 +2,7 @@
 // Wymaga zmiennych środowiskowych (nie zapisuj ich w repozytorium):
 //   SUPABASE_ACCESS_TOKEN, PROJECT_REF, OWNER_EMAIL, RESEND_API_KEY,
 //   VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, [EMAIL_FROM], [PUBLIC_BASE_URL], [STEP]
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 
@@ -38,7 +38,19 @@ if (steps.includes('keys')) {
 
 // 2. schemat bazy + RLS + Storage
 if (steps.includes('sql')) {
-  await sql(readFileSync('supabase/migrations/001_init.sql', 'utf8'));
+  // każda migracja wykonuje się dokładnie raz (rejestr w tabeli _migrations)
+  await sql("create table if not exists public._migrations (name text primary key, applied_at timestamptz not null default now()); alter table public._migrations enable row level security; revoke all on public._migrations from anon, authenticated;");
+  const done = new Set((await sql('select name from public._migrations')).map((r) => r.name));
+  // 001 było wdrożone przed wprowadzeniem rejestru
+  if (!done.size && (await sql("select to_regclass('public.jobs') as t"))[0].t) {
+    await sql("insert into public._migrations (name) values ('001_init.sql') on conflict do nothing");
+    done.add('001_init.sql');
+  }
+  for (const f of readdirSync('supabase/migrations').filter((x) => x.endsWith('.sql')).sort()) {
+    if (done.has(f)) continue;
+    await sql(readFileSync(`supabase/migrations/${f}`, 'utf8') + `\ninsert into public._migrations (name) values ('${f}');`);
+    console.log('  ✓ migracja', f);
+  }
   console.log('✓ tabele, reguły RLS, kubełek zdjęć');
 }
 

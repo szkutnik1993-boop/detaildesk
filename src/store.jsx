@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { TABLES, deleteDoc, deletePhoto, fetchTable, getMeta, isOwner, setMeta, signedUrl, uid, uploadPhoto, upsertDoc } from './lib/db.js';
+import { TABLES, deleteDoc, deletePhoto, fetchTable, getMeta, myStudio, setMeta, setPhotoPrefix, signedUrl, uid, uploadPhoto, upsertDoc } from './lib/db.js';
 import { supabase } from './lib/supabase.js';
 import { mergeSettings } from './lib/defaults.js';
 import { nowISO } from './lib/dates.js';
@@ -7,11 +7,13 @@ import { compressImage, downloadBlob, openBlob, shareOrDownload } from './lib/ut
 import Icon from './components/Icon.jsx';
 
 const DataCtx = createContext(null);
+export const READ_ONLY_MSG = 'Okres próbny się skończył – aplikacja działa w trybie tylko do odczytu. Skontaktuj się, żeby przedłużyć.';
 const UICtx = createContext(null);
 
 export function DataProvider({ children, login }) {
   const [session, setSession] = useState(undefined); // undefined = sprawdzam
   const [owner, setOwner] = useState(null);
+  const [studio, setStudio] = useState(null);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
@@ -41,9 +43,12 @@ export function DataProvider({ children, login }) {
       return;
     }
     let alive = true;
-    isOwner()
-      .then((ok) => {
+    myStudio()
+      .then((st) => {
         if (!alive) return;
+        const ok = !!st?.id;
+        setStudio(st);
+        setPhotoPrefix(st?.id);
         setOwner(ok);
         if (ok) load();
       })
@@ -64,11 +69,23 @@ export function DataProvider({ children, login }) {
 
   const dataRef = useRef(data);
   dataRef.current = data;
+  const studioRef = useRef(studio);
+  studioRef.current = studio;
+  // tryb tylko do odczytu po wygaśnięciu okresu próbnego (baza i tak blokuje zapis – to tylko czytelny komunikat)
+  const guard = () => {
+    if (studioRef.current && studioRef.current.active === false) throw new Error(READ_ONLY_MSG);
+  };
 
   const api = useMemo(
     () => ({
       reload: load,
+      async refreshStudio() {
+        const st = await myStudio();
+        setStudio(st);
+        return st;
+      },
       async save(table, obj) {
+        guard();
         const o = { ...obj };
         if (!o.id) o.id = uid();
         if (!o.createdAt) o.createdAt = nowISO();
@@ -78,24 +95,29 @@ export function DataProvider({ children, login }) {
         return saved;
       },
       async remove(table, id) {
+        guard();
         await deleteDoc(table, id);
         setData((d) => (d ? { ...d, [table]: d[table].filter((x) => x.id !== id) } : d));
       },
       async saveSettings(settings) {
+        guard();
         await setMeta('settings', settings);
         setData((d) => ({ ...d, settings: mergeSettings(settings) }));
       },
       async logReminder(id, action) {
+        if (studioRef.current?.active === false) return;
         const log = { ...(dataRef.current?.reminderLog || {}), [id]: { action, at: nowISO() } };
         setData((d) => ({ ...d, reminderLog: log }));
         await setMeta('reminderLog', log);
       },
       async markBackup() {
+        if (studioRef.current?.active === false) return;
         const at = nowISO();
         await setMeta('lastBackup', at);
         setData((d) => ({ ...d, lastBackup: at }));
       },
       async addPhoto(file) {
+        guard();
         const blob = await compressImage(file);
         return uploadPhoto(blob);
       },
@@ -113,7 +135,7 @@ export function DataProvider({ children, login }) {
   if (owner === false)
     return (
       <Splash>
-        <p className="muted" style={{ maxWidth: 300, textAlign: 'center' }}>To konto ({session.user.email}) nie ma dostępu do DetailDesk.</p>
+        <p className="muted" style={{ maxWidth: 300, textAlign: 'center' }}>To konto ({session.user.email}) nie jest przypisane do żadnego studia.</p>
         <button className="btn" onClick={() => supabase.auth.signOut()}>Wyloguj</button>
       </Splash>
     );
@@ -131,7 +153,7 @@ export function DataProvider({ children, login }) {
       </Splash>
     );
 
-  return <DataCtx.Provider value={{ data, api, session }}>{children}</DataCtx.Provider>;
+  return <DataCtx.Provider value={{ data, api, session, studio, readOnly: studio?.active === false }}>{children}</DataCtx.Provider>;
 }
 
 export function Splash({ children }) {

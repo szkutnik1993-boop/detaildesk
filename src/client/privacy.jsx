@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
-import { Brand, Footer } from './common.jsx';
+import { Brand, Footer, studioSlug } from './common.jsx';
 import { publicGet } from '../lib/supabase.js';
 
 // Dane administratora pobierane z Ustawień aplikacji (Studio → nazwa firmy, NIP, adres, e-mail, telefon).
@@ -9,7 +9,9 @@ const Fill = ({ v, label }) => (v ? <b>{v}</b> : <mark className="todo">[{label}
 function Privacy() {
   const [st, setSt] = useState(null);
   useEffect(() => {
-    publicGet({ action: 'config' }).then((r) => setSt(r.config.studio)).catch(() => setSt({}));
+    publicGet({ action: 'config', ...(studioSlug() ? { s: studioSlug() } : {}) })
+      .then((r) => setSt({ ...r.config.studio, ...r.studio, ...(r.studio.contact || {}), name: r.studio.name }))
+      .catch(() => setSt({}));
   }, []);
   const s = st || {};
   return (

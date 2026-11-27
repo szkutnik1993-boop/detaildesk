@@ -114,7 +114,8 @@ ok((protAfter.data.emailed || []).length === 1, 'aplikacja zapisała, kiedy i do
 ({ data: [row] } = await owner.from('jobs').select('*').eq('id', job.id));
 job = applyTransition({ ...row.data, id: row.id }, 'w_trakcie').job;
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
-const path = `test/${job.id}.png`;
+const studioId = (await owner.rpc('my_studio')).data.id;
+const path = `${studioId}/test/${job.id}.png`;
 const up = await owner.storage.from('photos').upload(path, png, { contentType: 'image/png', upsert: true });
 ok(!up.error, 'zdjęcie wysłane do prywatnego Storage');
 job.timeline.push({ type: 'photo', path, stage: 'Korekta', caption: 'Po pierwszym etapie', at: new Date().toISOString() });

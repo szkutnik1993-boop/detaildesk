@@ -51,20 +51,83 @@ export async function getMeta(key, fallback) {
 }
 
 export async function setMeta(key, value) {
-  const { error } = await supabase.from('meta').upsert({ key, value, updated_at: new Date().toISOString() });
+  // studio_id uzupełnia baza (domyślnie studio zalogowanego użytkownika)
+  const { error } = await supabase.from('meta').upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'studio_id,key' });
   check(error);
 }
 
-export async function isOwner() {
-  const { data, error } = await supabase.rpc('is_owner');
+// studio zalogowanego użytkownika (+ status abonamentu, rola administratora)
+export async function myStudio() {
+  const { data, error } = await supabase.rpc('my_studio');
   check(error);
-  return !!data;
+  return data;
 }
 
-// --- zdjęcia (prywatny kubełek „photos”) ---
+export async function updateMyStudio({ name, emailFromName, logoUrl } = {}) {
+  const { error } = await supabase.rpc('update_my_studio', { p_name: name ?? null, p_email_from_name: emailFromName ?? null, p_logo_url: logoUrl ?? null });
+  check(error);
+}
+
+// logo: publiczny kubełek „logos/<studio>/logo-<czas>.png” (widoczne na stronie rezerwacji i w e-mailach)
+export async function uploadLogo(blob, studioId) {
+  const ext = blob.type === 'image/png' ? 'png' : 'jpg';
+  const path = `${studioId}/logo-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from('logos').upload(path, blob, { contentType: blob.type, upsert: true });
+  check(error);
+  return supabase.storage.from('logos').getPublicUrl(path).data.publicUrl;
+}
+
+// --- administrator platformy ---
+export async function adminListStudios() {
+  const { data, error } = await supabase.rpc('admin_list_studios');
+  check(error);
+  return data;
+}
+export async function adminExtendStudio(studioId, months, amountCents = null) {
+  const { data, error } = await supabase.rpc('admin_extend_studio', { p_studio: studioId, p_months: months, p_amount_cents: amountCents });
+  check(error);
+  return data;
+}
+export async function adminListFeedback() {
+  const { data, error } = await supabase.rpc('admin_list_feedback');
+  check(error);
+  return data;
+}
+export async function adminSetFeedbackStatus(id, status) {
+  const { error } = await supabase.rpc('admin_set_feedback_status', { p_id: id, p_status: status });
+  check(error);
+}
+export async function adminListPayments() {
+  const { data, error } = await supabase.rpc('admin_list_payments');
+  check(error);
+  return data;
+}
+export async function adminSetBlocked(studioId, blocked) {
+  const { error } = await supabase.rpc('admin_set_blocked', { p_studio: studioId, p_blocked: blocked });
+  check(error);
+}
+export async function adminSetNotes(studioId, notes) {
+  const { error } = await supabase.rpc('admin_set_notes', { p_studio: studioId, p_notes: notes });
+  check(error);
+}
+export async function adminSetAnnouncement(title, body) {
+  const { error } = await supabase.rpc('admin_set_announcement', { p_title: title, p_body: body });
+  check(error);
+}
+export async function myFeedback() {
+  const { data, error } = await supabase.from('feedback').select('*').order('created_at', { ascending: false }).limit(20);
+  check(error);
+  return data;
+}
+
+// --- zdjęcia (prywatny kubełek „photos”, folder = ID studia) ---
+let photoPrefix = '';
+export const setPhotoPrefix = (studioId) => {
+  photoPrefix = studioId ? `${studioId}/` : '';
+};
 export async function uploadPhoto(blob) {
   const d = new Date();
-  const path = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${uid()}.jpg`;
+  const path = `${photoPrefix}${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${uid()}.jpg`;
   const { error } = await supabase.storage.from('photos').upload(path, blob, { contentType: 'image/jpeg', upsert: false });
   check(error);
   return path;
@@ -99,14 +162,14 @@ export async function importAll(backup) {
   if (!backup || backup.app !== 'detaildesk' || !backup.data) throw new Error('To nie jest plik kopii DetailDesk.');
   if (backup.version !== 2) throw new Error('Ta kopia pochodzi ze starej wersji aplikacji.');
   for (const t of TABLES) {
-    const rows = backup.data[t] || [];
+    const rows = (backup.data[t] || []).map(({ studio_id, ...r }) => r); // zawsze do studia zalogowanego użytkownika
     for (let i = 0; i < rows.length; i += 200) {
       const { error } = await supabase.from(t).upsert(rows.slice(i, i + 200), { onConflict: 'id' });
       check(error);
     }
   }
   if (backup.data.meta?.length) {
-    const { error } = await supabase.from('meta').upsert(backup.data.meta);
+    const { error } = await supabase.from('meta').upsert(backup.data.meta.map(({ studio_id, ...r }) => r), { onConflict: 'studio_id,key' });
     check(error);
   }
 }

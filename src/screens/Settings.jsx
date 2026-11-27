@@ -3,14 +3,21 @@ import Icon from '../components/Icon.jsx';
 import { Field, Header, Section } from '../components/ui.jsx';
 import { useData, useUI } from '../store.jsx';
 import { DEFAULT_SETTINGS, structuredCloneSafe } from '../lib/defaults.js';
-import { exportAll, importAll, uid } from '../lib/db.js';
+import { exportAll, importAll, myFeedback, uid, updateMyStudio, uploadLogo } from '../lib/db.js';
+import { studioStatus } from '../lib/subscription.js';
+import { PLATFORM_CONTACT } from '../config.js';
+import { ExtendNote } from './Onboarding.jsx';
+import { go } from '../router.js';
 import { daysBetween, fmtDateTime, todayISO } from '../lib/dates.js';
 import { fileToDataURL, parseNum } from '../lib/utils.js';
 import { currentSubscription, disablePush, enablePush, isStandalone } from '../lib/push.js';
 import { ownerCall } from '../lib/supabase.js';
 
 export default function Settings() {
-  const { data, api, session } = useData();
+  const { data, api, session, studio, readOnly } = useData();
+  const [fromName, setFromName] = useState(studio.email_from_name || studio.name);
+  const [fb, setFb] = useState({ kind: 'pomysł', message: '' });
+  const [myFb, setMyFb] = useState([]);
   const ui = useUI();
   const [s, setS] = useState(() => structuredCloneSafe(data.settings));
   const [dirty, setDirty] = useState(false);
@@ -20,6 +27,7 @@ export default function Settings() {
 
   useEffect(() => {
     currentSubscription().then((x) => setPushOn(!!x)).catch(() => {});
+    myFeedback().then(setMyFb).catch(() => {});
   }, []);
 
   const upd = (fn) => {
@@ -31,7 +39,8 @@ export default function Settings() {
     setDirty(true);
   };
 
-  const save = async () => {
+  const save = () => ui.run('Zapisuję…', saveInner);
+  const saveInner = async () => {
     const clean = structuredCloneSafe(s);
     clean.services = clean.services.filter((x) => x.name.trim()).map((x) => ({ ...x, price: parseNum(x.price) }));
     clean.sizes = clean.sizes.map((x) => ({ ...x, mult: parseNum(x.mult, 1) }));
@@ -41,6 +50,8 @@ export default function Settings() {
     clean.reminders.coatingMonths = parseNum(clean.reminders.coatingMonths, 6);
     clean.reminders.quoteFollowupDays = parseNum(clean.reminders.quoteFollowupDays, 5);
     await api.saveSettings(clean);
+    await updateMyStudio({ name: clean.studio.name, emailFromName: fromName });
+    await api.refreshStudio();
     setS(clean);
     setDirty(false);
     ui.toast('Ustawienia zapisane');
@@ -77,11 +88,26 @@ export default function Settings() {
     if (!f) return;
     const url = await fileToDataURL(f);
     if (!/^data:image\/(png|jpe?g)/.test(url)) return alert('Logo musi być w formacie PNG lub JPG.');
-    upd((n) => (n.studio.logo = url));
+    await ui.run('Wysyłam logo…', async () => {
+      const blob = await (await fetch(url)).blob();
+      const publicUrl = await uploadLogo(blob, studio.id);
+      await updateMyStudio({ logoUrl: publicUrl });
+      await api.refreshStudio();
+      upd((n) => (n.studio.logo = url));
+      ui.toast('Logo zapisane – zapisz zmiany, aby trafiło też do PDF');
+    });
   };
 
   const backupAge = data.lastBackup ? daysBetween(data.lastBackup.slice(0, 10), todayISO()) : null;
-  const bookingUrl = new URL('umow/', document.baseURI.replace(/#.*$/, '')).toString();
+  const bookingUrl = new URL(`umow/?s=${studio.slug}`, document.baseURI.replace(/#.*$/, '')).toString();
+  const sub = studio.blocked ? { label: 'Zablokowane', state: 'expired', daysLeft: 0 } : studioStatus(studio);
+  const sendFb = () =>
+    ui.run('Wysyłam…', async () => {
+      await ownerCall({ action: 'feedback', kind: fb.kind, message: fb.message });
+      setFb({ kind: fb.kind, message: '' });
+      setMyFb(await myFeedback());
+      ui.toast('Dziękuję! Wiadomość wysłana ✓');
+    });
   const togglePush = () =>
     ui.run(pushOn ? 'Wyłączam…' : 'Włączam powiadomienia…', async () => {
       if (pushOn) await disablePush();
@@ -94,6 +120,40 @@ export default function Settings() {
   return (
     <div className="screen">
       <Header title="Ustawienia" backTo="/" />
+
+      <Section title="Abonament">
+        <div className="card form">
+          <div className="row between">
+            <div>
+              <div className="h3">{sub.label}</div>
+              <div className="small muted">
+                {studio.plan === 'lifetime'
+                  ? 'Dostęp bezterminowy'
+                  : sub.state === 'expired'
+                    ? 'Tryb tylko do odczytu – dane są bezpieczne, eksport działa.'
+                    : `Aktywne do ${new Date(studio.active_until).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })} · zostało ${sub.daysLeft} dni`}
+              </div>
+            </div>
+            <span className={`pill ${sub.state === 'expired' ? 'st-done' : sub.state === 'trial' ? 'st-planned' : 'st-ready'}`}>{sub.label}</span>
+          </div>
+          {studio.plan !== 'lifetime' && (
+            <a className="btn block" style={{ marginTop: 0 }} href={`mailto:${PLATFORM_CONTACT.email}?subject=${encodeURIComponent('Przedłużenie DetailDesk – ' + studio.name)}`}>
+              <Icon name="sms" /> Przedłuż – napisz do mnie
+            </a>
+          )}
+        </div>
+      </Section>
+
+      {studio.is_admin && (
+        <button className="card list-item admin-entry" onClick={() => go('/admin')}>
+          <Icon name="shield" className="gold" />
+          <div style={{ flex: 1 }}>
+            <div className="h3">Panel administratora</div>
+            <div className="small muted">Studia, płatności, pomysły, ogłoszenia</div>
+          </div>
+          <Icon name="chevron" />
+        </button>
+      )}
 
       <Section title="Link dla klientów">
         <div className="card form">
@@ -129,7 +189,7 @@ export default function Settings() {
           <button className="btn primary block" onClick={doExport}>
             <Icon name="download" /> Eksportuj kopię (plik)
           </button>
-          <button className="btn block" onClick={() => importRef.current.click()}>
+          <button className="btn block" disabled={readOnly} onClick={() => importRef.current.click()}>
             <Icon name="upload" /> Importuj kopię z pliku
           </button>
           <input ref={importRef} type="file" accept="application/json,.json" hidden onChange={doImport} />
@@ -141,6 +201,9 @@ export default function Settings() {
           <div className="grid2">
             <Field label="Nazwa studia">
               <input value={s.studio.name} onChange={(e) => upd((n) => (n.studio.name = e.target.value))} />
+            </Field>
+            <Field label="Nazwa nadawcy e-maili">
+              <input value={fromName} onChange={(e) => { setFromName(e.target.value); setDirty(true); }} />
             </Field>
             <Field label="Podpis w SMS">
               <input value={s.studio.signature} onChange={(e) => upd((n) => (n.studio.signature = e.target.value))} />
@@ -165,14 +228,14 @@ export default function Settings() {
             </Field>
           </div>
           <div className="field">
-            <span className="field-label">Logo na PDF (PNG/JPG, jasne – na ciemnym pasku)</span>
+            <span className="field-label">Logo (formularz rezerwacji, e-maile, PDF) – PNG/JPG, jasne</span>
             {s.studio.logo && <img src={s.studio.logo} alt="Logo" className="logo-preview" />}
             <div className="row gap">
               <button className="btn grow" onClick={() => logoRef.current.click()}>
                 <Icon name="image" /> {s.studio.logo ? 'Zmień logo' : 'Dodaj logo'}
               </button>
               {s.studio.logo && (
-                <button className="btn" onClick={() => upd((n) => (n.studio.logo = null))}>Usuń</button>
+                <button className="btn" onClick={() => ui.run('Usuwam…', async () => { await updateMyStudio({ logoUrl: '' }); await api.refreshStudio(); upd((n) => (n.studio.logo = null)); })}>Usuń</button>
               )}
             </div>
             <input ref={logoRef} type="file" accept="image/png,image/jpeg" hidden onChange={setLogo} />
@@ -217,6 +280,7 @@ export default function Settings() {
           >
             Przywróć domyślny cennik
           </button>
+          <ExtendNote />
         </div>
       </Section>
 
@@ -290,6 +354,32 @@ export default function Settings() {
         </div>
       </Section>
 
+      <Section title="Pomysły i uwagi do twórcy aplikacji">
+        <div className="card form">
+          <div className="small muted">Masz pomysł na usprawnienie, coś nie działa albo brakuje usługi na liście? Napisz – czytam każdą wiadomość.</div>
+          <div className="chips" style={{ marginBottom: 0 }}>
+            {['pomysł', 'uwaga', 'błąd'].map((k) => (
+              <button key={k} className={fb.kind === k ? 'on' : ''} onClick={() => setFb({ ...fb, kind: k })}>{k}</button>
+            ))}
+          </div>
+          <textarea rows={4} value={fb.message} onChange={(e) => setFb({ ...fb, message: e.target.value })} placeholder="Twoja wiadomość…" />
+          <button className="btn primary block" style={{ marginTop: 0 }} disabled={fb.message.trim().length < 3} onClick={sendFb}>
+            <Icon name="sms" /> Wyślij
+          </button>
+          {myFb.length > 0 && (
+            <div className="fb-list">
+              {myFb.map((m) => (
+                <div key={m.id} className="fb-item small">
+                  <div className="row between"><span className="muted">{fmtDateTime(m.created_at)} · {m.kind}</span><span className="pill">{m.status}</span></div>
+                  <div className="pre">{m.message}</div>
+                  {m.reply && <div className="reply-box"><b>Odpowiedź:</b> <span className="pre">{m.reply}</span></div>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Section>
+
       <Section title="Konto">
         <div className="card form">
           <div className="small">Zalogowano jako <b>{session.user.email}</b></div>
@@ -298,7 +388,7 @@ export default function Settings() {
       </Section>
       <div className="small muted center-text" style={{ margin: '24px 0' }}>DetailDesk v2.0 · <a className="gold" href="prywatnosc/" target="_blank" rel="noreferrer">polityka prywatności</a></div>
 
-      {dirty && (
+      {dirty && !readOnly && (
         <div className="save-bar">
           <button className="btn primary block" onClick={save}>
             <Icon name="check" /> Zapisz zmiany

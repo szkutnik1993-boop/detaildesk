@@ -13,7 +13,7 @@ function layout(studio, body) {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0E0F11;padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">
 <tr><td style="padding:8px 4px 20px;font-size:20px;font-weight:700;letter-spacing:3px">
-<span style="color:${GOLD}">${h(words[0].toUpperCase())}</span> <span style="color:#F2F2F0">${h(words.slice(1).join(' ').toUpperCase())}</span></td></tr>
+${studio.logoUrl ? `<img src="${h(studio.logoUrl)}" alt="${h(studio.name)}" height="48" style="height:48px;max-width:240px;display:block">` : `<span style="color:${GOLD}">${h(words[0].toUpperCase())}</span> <span style="color:#F2F2F0">${h(words.slice(1).join(' ').toUpperCase())}</span>`}</td></tr>
 <tr><td style="background:#FFFFFF;border-radius:16px;padding:28px 24px;font-size:15px;line-height:1.55">${body}</td></tr>
 <tr><td style="padding:18px 4px;color:#A3A7AE;font-size:12px;line-height:1.5">${contact}</td></tr>
 </table></td></tr></table></body></html>`;
@@ -123,6 +123,66 @@ export function clientReady({ job, carLabel, studio, jobLink }) {
     ])}
     ${button(jobLink, 'Zobacz zdjęcia z realizacji')}
     <p>Dziękuję za zaufanie!<br><b>${h(studio.signature)}</b> – ${h(studio.name)}</p>`
+  );
+  return { subject, html };
+}
+
+// ---------- e-maile platformy (DetailDesk → studio / administrator) ----------
+const PLATFORM = { name: 'DetailDesk', signature: 'DetailDesk', logoUrl: null };
+
+export function studioTrialReminder({ studio, days, untilText, contact }) {
+  const when = days === 1 ? 'jutro' : `za ${days} dni`;
+  const subject = `DetailDesk: dostęp dla „${studio.name}” kończy się ${when}`;
+  const html = layout(
+    PLATFORM,
+    `<h2 style="margin:0 0 6px;font-size:20px">Dostęp kończy się ${h(when)}</h2>
+    <p style="margin:0">Okres ${studio.plan === 'trial' ? 'próbny' : 'abonamentu'} DetailDesk dla studia <b>${h(studio.name)}</b> kończy się <b>${h(untilText)}</b>.</p>
+    <p>Po tym terminie aplikacja przejdzie w tryb tylko do odczytu, a formularz rezerwacji dla klientów zostanie wstrzymany. <b>Twoje dane nie zostaną usunięte</b> – eksport jest zawsze dostępny.</p>
+    <p>Aby przedłużyć dostęp, skontaktuj się ze mną: ${contact}</p>`
+  );
+  return { subject, html };
+}
+
+export function adminNewStudio({ studio, email, phone, adminLink }) {
+  const subject = `DetailDesk: nowe studio – ${studio.name}`;
+  const html = layout(
+    PLATFORM,
+    `<h2 style="margin:0 0 6px;font-size:20px">Nowe studio na okresie próbnym</h2>
+    ${box([
+      ['Studio', h(studio.name)],
+      ['Link', h(studio.slug)],
+      ['E-mail', h(email)],
+      ['Telefon', h(phone || '—')],
+      ['Okres próbny do', h(new Date(studio.active_until).toLocaleDateString('pl-PL', { timeZone: 'Europe/Warsaw' }))],
+    ])}
+    ${button(adminLink, 'Panel administratora')}`
+  );
+  return { subject, html };
+}
+
+export function adminFeedback({ studio, author, kind, message, adminLink }) {
+  const subject = `DetailDesk: ${kind} od „${studio.name}”`;
+  const html = layout(
+    PLATFORM,
+    `<h2 style="margin:0 0 6px;font-size:20px">${h(kind.charAt(0).toUpperCase() + kind.slice(1))} od studia</h2>
+    ${box([
+      ['Studio', h(studio.name)],
+      ['Od', h(author)],
+    ])}
+    <div style="white-space:pre-wrap;background:#F6F6F7;border-radius:12px;padding:14px">${h(message)}</div>
+    ${button(adminLink, 'Panel administratora')}`
+  );
+  return { subject, html };
+}
+
+export function adminReply({ studio, original, reply }) {
+  const subject = `DetailDesk: odpowiedź na Twoją wiadomość`;
+  const html = layout(
+    PLATFORM,
+    `<h2 style="margin:0 0 6px;font-size:20px">Dziękuję za wiadomość${studio ? ` (${h(studio.name)})` : ''}!</h2>
+    <div style="white-space:pre-wrap;margin:14px 0">${h(reply)}</div>
+    <p style="color:#6B6F76;font-size:13px;margin:18px 0 6px">Twoja wiadomość:</p>
+    <div style="white-space:pre-wrap;background:#F6F6F7;border-radius:12px;padding:12px;color:#3A3D42;font-size:14px">${h(original)}</div>`
   );
   return { subject, html };
 }

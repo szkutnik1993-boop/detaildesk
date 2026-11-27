@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import ReactDOM from 'react-dom/client';
-import { Brand, Footer } from './common.jsx';
+import { Brand, Footer, studioSlug } from './common.jsx';
 import Icon from '../components/Icon.jsx';
 import { calcQuote, formatMoney } from '../lib/pricing.js';
 import { validateRequest } from '../lib/booking.js';
@@ -12,6 +12,7 @@ const fmtMult = (m) => `×${String(m).replace('.', ',')}`;
 
 function Booking() {
   const [cfg, setCfg] = useState(null);
+  const [studio, setStudio] = useState(null);
   const [loadErr, setLoadErr] = useState(null);
   const [f, setF] = useState({
     make: '', model: '', sizeId: '', serviceIds: [], paintId: '',
@@ -25,8 +26,11 @@ function Booking() {
   const set = (patch) => setF((x) => ({ ...x, ...patch }));
 
   useEffect(() => {
-    publicGet({ action: 'config' })
+    publicGet({ action: 'config', ...(studioSlug() ? { s: studioSlug() } : {}) })
       .then((r) => {
+        setStudio(r.studio);
+        document.title = `Umów wizytę – ${r.studio.name}`;
+        if (!r.studio.active) return setCfg(r.config);
         setCfg(r.config);
         setF((x) => ({ ...x, sizeId: r.config.sizes[1]?.id || r.config.sizes[0].id, paintId: r.config.paints[0].id }));
       })
@@ -35,12 +39,25 @@ function Booking() {
 
   const calc = useMemo(() => (cfg ? calcQuote(f, cfg) : null), [cfg, f]);
 
-  if (loadErr) return <Shell><div className="empty">Nie udało się wczytać cennika. Odśwież stronę lub zadzwoń.</div></Shell>;
+  if (loadErr) return <Shell><div className="empty">Nie znaleziono studia lub nie udało się wczytać cennika. Sprawdź link albo odśwież stronę.</div></Shell>;
+  if (studio && !studio.active)
+    return (
+      <Shell studio={{ ...cfg.studio, ...studio }}>
+        <div className="c-done">
+          <div className="c-done-icon muted-icon"><Icon name="calendar" size={30} /></div>
+          <h1>Rezerwacje chwilowo niedostępne</h1>
+          <p>Formularz online jest teraz wyłączony.</p>
+        </div>
+        {cfg.studio.phone && (
+          <a className="btn primary block" href={`tel:${cfg.studio.phone.replace(/[^d+]/g, '')}`}><Icon name="phone" /> Zadzwoń do studia: {cfg.studio.phone}</a>
+        )}
+      </Shell>
+    );
   if (!cfg) return <Shell><div className="center-load"><div className="spinner" /></div></Shell>;
 
   if (done)
     return (
-      <Shell studio={cfg.studio}>
+      <Shell studio={{ ...cfg.studio, ...studio }}>
         <div className="c-done">
           <div className="c-done-icon"><Icon name="check" size={34} /></div>
           <h1>Dziękujemy{done.name ? `, ${done.name}` : ''}!</h1>
@@ -82,12 +99,13 @@ function Booking() {
     }
     setSending(true);
     try {
-      await publicPost('request', f);
+      await publicPost(studioSlug() ? `request&s=${encodeURIComponent(studioSlug())}` : 'request', f);
       setDone({ name: f.name.trim().split(' ')[0], email: f.email.trim(), total: calc.total, items: calc.items, slots: f.slots });
       window.scrollTo(0, 0);
     } catch (err) {
       setSending(false);
       if (err.errors) setErrors(err.errors);
+      if (err.status === 403) setStudio((x) => ({ ...x, active: false }));
       setSendErr(err.message);
     }
   };
@@ -95,7 +113,7 @@ function Booking() {
   const Err = ({ k }) => (errors[k] ? <div className="c-error">{errors[k]}</div> : null);
 
   return (
-    <Shell studio={cfg.studio}>
+    <Shell studio={{ ...cfg.studio, ...studio }}>
       <div className="c-hero">
         <h1>Umów wizytę</h1>
         <p className="muted">Wybierz usługi, sprawdź orientacyjną cenę i zaproponuj termin. Potwierdzę go e-mailem.</p>

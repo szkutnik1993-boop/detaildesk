@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Icon from '../components/Icon.jsx';
 import { Field } from '../components/ui.jsx';
-import { supabase } from '../lib/supabase.js';
+import { publicPost, supabase } from '../lib/supabase.js';
 
 const KEY = 'dd-login-email';
 const read = () => {
@@ -42,6 +42,9 @@ export default function Login() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
+  const [mode, setMode] = useState(() => (window.location.hash.includes('rejestracja') ? 'register' : 'login')); // login | register
+  const [reg, setReg] = useState({ studioName: '', phone: '', consent: false, website: '' });
+  const [regErr, setRegErr] = useState({});
 
   const send = async (e) => {
     e.preventDefault();
@@ -61,6 +64,32 @@ export default function Login() {
     else setSent(true);
   };
 
+  // rejestracja nowego studia → konto + 30 dni okresu próbnego → kod logowania e-mailem
+  const register = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setMsg(null);
+    setRegErr({});
+    try {
+      localStorage.setItem(KEY, email.trim());
+    } catch {
+      /* brak localStorage */
+    }
+    try {
+      await publicPost('register', { ...reg, email: email.trim() });
+    } catch (err) {
+      setBusy(false);
+      if (err.errors) setRegErr(err.errors);
+      setMsg(err.message);
+      if (err.status === 409) setMode('login');
+      return;
+    }
+    const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: false } });
+    setBusy(false);
+    if (error) setMsg(`Konto założone, ale nie wysłano kodu: ${error.message}. Spróbuj zalogować się za minutę.`);
+    else setSent(true);
+  };
+
   const verify = async (e) => {
     e.preventDefault();
     setBusy(true);
@@ -73,9 +102,35 @@ export default function Login() {
 
   return (
     <div className="login">
-      <div className="brand">ARC<span>DETAILING</span></div>
-      <div className="muted" style={{ marginTop: 4 }}>DetailDesk – aplikacja studia</div>
-      {!sent ? (
+      <div className="brand">DETAIL<span>DESK</span></div>
+      <div className="muted" style={{ marginTop: 4 }}>Aplikacja dla studiów detailingu</div>
+      {!sent && mode === 'register' ? (
+        <form className="card form login-card" onSubmit={register} noValidate>
+          <div className="h3">Załóż konto studia</div>
+          <div className="small muted">30 dni za darmo, bez karty. Po okresie próbnym zdecydujesz, czy zostajesz.</div>
+          <Field label="Nazwa studia">
+            <input required value={reg.studioName} onChange={(e) => setReg({ ...reg, studioName: e.target.value })} placeholder="np. Auto Spa Kraków" />
+            {regErr.studioName && <span className="warn small">{regErr.studioName}</span>}
+          </Field>
+          <Field label="Twój e-mail (logowanie)">
+            <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            {regErr.email && <span className="warn small">{regErr.email}</span>}
+          </Field>
+          <Field label="Telefon (opcjonalnie)">
+            <input type="tel" value={reg.phone} onChange={(e) => setReg({ ...reg, phone: e.target.value })} />
+          </Field>
+          <input className="hp" tabIndex={-1} autoComplete="off" value={reg.website} onChange={(e) => setReg({ ...reg, website: e.target.value })} aria-hidden="true" />
+          <label className="check-row consent">
+            <input type="checkbox" checked={reg.consent} onChange={(e) => setReg({ ...reg, consent: e.target.checked })} />
+            <span className="small">Akceptuję warunki okresu próbnego i zgadzam się na przetwarzanie moich danych w celu założenia i obsługi konta.</span>
+          </label>
+          {regErr.consent && <span className="warn small">{regErr.consent}</span>}
+          <button className="btn primary block" disabled={busy}>
+            <Icon name="check" /> {busy ? 'Zakładam konto…' : 'Załóż konto – 30 dni za darmo'}
+          </button>
+          <button type="button" className="link-btn small" onClick={() => setMode('login')}>Mam już konto – zaloguj się</button>
+        </form>
+      ) : !sent ? (
         <form className="card form login-card" onSubmit={send}>
           <Field label="Twój e-mail">
             <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -83,6 +138,7 @@ export default function Login() {
           <button className="btn primary block" disabled={busy}>
             <Icon name="sms" /> {busy ? 'Wysyłam…' : 'Wyślij link logowania'}
           </button>
+          <button type="button" className="link-btn small" onClick={() => setMode('register')}>Nowe studio? Załóż konto – 30 dni za darmo</button>
         </form>
       ) : (
         <form className="card form login-card" onSubmit={verify}>
