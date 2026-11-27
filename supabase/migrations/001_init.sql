@@ -86,3 +86,10 @@ begin
     alter publication supabase_realtime add table public.jobs;
   end if;
 end $$;
+
+-- uprawnienia ról (RLS i tak ogranicza wiersze do właściciela; anon nie dostaje nic)
+grant usage on schema public to authenticated, service_role;
+grant select, insert, update, delete on public.cars, public.jobs, public.quotes, public.protocols, public.meta, public.push_subscriptions to authenticated;
+grant all on all tables in schema public to service_role;
+grant usage, select on all sequences in schema public to service_role;
+revoke all on public.cars, public.jobs, public.quotes, public.protocols, public.meta, public.push_subscriptions, public.request_log, public.app_owner from anon;

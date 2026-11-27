@@ -104,7 +104,7 @@ if (steps.includes('secrets')) {
 // 6. funkcje Edge
 if (steps.includes('functions')) {
   for (const fn of ['public', 'owner', 'cron']) {
-    execFileSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['supabase', 'functions', 'deploy', fn, '--project-ref', ref, '--no-verify-jwt', '--use-api'], {
+    execFileSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['supabase', 'functions', 'deploy', fn, '--project-ref', ref, '--no-verify-jwt', '--use-api', '--yes'], {
       stdio: 'inherit',
       shell: process.platform === 'win32',
       env: { ...E, SUPABASE_ACCESS_TOKEN: token },
