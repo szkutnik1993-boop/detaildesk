@@ -105,3 +105,21 @@ describe('kalendarz .ics i strefa czasowa', () => {
     expect(addDaysISO('2026-11-30', 1)).toBe('2026-12-01');
   });
 });
+
+import { normWeb, webHref } from './booking.js';
+describe('strona www studia', () => {
+  it('ujednolica zapis', () => {
+    expect(normWeb('https://www.MojeStudio.pl/')).toBe('www.mojestudio.pl');
+    expect(normWeb('mojestudio.pl')).toBe('mojestudio.pl');
+    expect(normWeb('http://auto-spa.com.pl/oferta/')).toBe('auto-spa.com.pl/oferta');
+    expect(normWeb('  ')).toBe('');
+  });
+  it('odrzuca niepoprawne adresy', () => {
+    for (const bad of ['moje studio', 'localhost', 'javascript:alert(1)', 'http://', 'abc', 'a b.pl']) expect(normWeb(bad)).toBeNull();
+  });
+  it('link zawsze przez https', () => {
+    expect(webHref('arcdetailing.pl')).toBe('https://arcdetailing.pl');
+    expect(webHref('http://x.pl')).toBe('https://x.pl');
+    expect(webHref('zły adres')).toBeNull();
+  });
+});

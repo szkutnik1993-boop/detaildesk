@@ -59,3 +59,4 @@ mark.todo { background: rgba(232,135,58,0.18); color: #ffb27a; border-radius: 4p
 .c-next p { margin: 8px 0 0; line-height: 1.55; }
 .c-logo { max-height: 52px; max-width: 220px; object-fit: contain; display: block; }
 .muted-icon { background: var(--card-2) !important; color: var(--muted) !important; box-shadow: none !important; }
+.c-logo-link { display: inline-block; }

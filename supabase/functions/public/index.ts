@@ -5,7 +5,7 @@ import {
   sendEmail, sendStudioEmail, sendPushAll, env, rateLimited, studioInfo, DEFAULT_SLUG,
 } from '../_shared/server.js';
 import { publicConfig } from '../_shared/defaults.js';
-import { validateRequest, cleanText } from '../_shared/booking.js';
+import { validateRequest, cleanText, normWeb } from '../_shared/booking.js';
 import { buildIcs, warsawToday } from '../_shared/ics.js';
 import { ownerNewRequest, adminNewStudio, studioWelcome } from '../_shared/emails.js';
 import { STATUSES } from '../_shared/status.js';
@@ -163,9 +163,11 @@ async function handleRegister(req, db) {
   const name = cleanText(b.studioName, 60);
   const email = cleanText(b.email, 120).toLowerCase();
   const phone = cleanText(b.phone, 30);
+  const web = normWeb(b.web);
   const errors = {};
   if (name.length < 2) errors.studioName = 'Podaj nazwę studia.';
   if (!EMAIL_RE.test(email)) errors.email = 'Podaj poprawny e-mail.';
+  if (web === null) errors.web = 'Podaj poprawny adres strony, np. mojestudio.pl (albo zostaw puste).';
   if (b.consent !== true) errors.consent = 'Zgoda jest wymagana.';
   if (Object.keys(errors).length) return json({ ok: false, errors }, 400);
 
@@ -194,7 +196,7 @@ async function handleRegister(req, db) {
     if (sErr) throw sErr;
     const steps = await Promise.all([
       db.from('studio_members').insert({ user_id: userId, studio_id: studio.id, role: 'owner' }),
-      db.from('meta').insert({ studio_id: studio.id, key: 'settings', value: { studio: { name, signature: '', phone, email, web: '', address: '' }, services: [], onboarded: false } }),
+      db.from('meta').insert({ studio_id: studio.id, key: 'settings', value: { studio: { name, signature: '', phone, email, web: web || '', address: '' }, services: [], onboarded: false } }),
       db.from('subscription_events').insert({ studio_id: studio.id, kind: 'trial', months: null, source: 'registration', active_until_after: studio.active_until, created_by: email }),
     ]);
     const failed = steps.find((s) => s.error);

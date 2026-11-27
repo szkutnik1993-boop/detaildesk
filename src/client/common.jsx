@@ -5,6 +5,7 @@ import '@fontsource/space-grotesk/500.css';
 import '@fontsource/space-grotesk/700.css';
 import '../styles.css';
 import './client.css';
+import { webHref } from '../lib/booking.js';
 
 const RESERVED_PATHS = ['umow', 'zlecenie', 'prywatnosc', 'rejestracja', 'assets', 'index.html', '404.html'];
 export const studioSlug = () => {
@@ -15,11 +16,23 @@ export const studioSlug = () => {
 };
 export const withSlug = (path, slug = studioSlug()) => (slug ? `${path}?s=${encodeURIComponent(slug)}` : path);
 
+// logo lub nazwa studia – prowadzi do strony www studia (w nowej karcie), jeśli studio ją podało
 export function Brand({ studio }) {
-  if (studio?.logoUrl) return <img className="c-logo" src={studio.logoUrl} alt={studio.name} />;
+  const href = webHref(studio?.web);
+  const link = href ? { href, target: '_blank', rel: 'noopener noreferrer', title: `Strona ${studio?.name || 'studia'}` } : {};
+  if (studio?.logoUrl) {
+    const img = <img className="c-logo" src={studio.logoUrl} alt={studio.name} />;
+    return href ? (
+      <a className="c-logo-link" {...link}>
+        {img}
+      </a>
+    ) : (
+      img
+    );
+  }
   const words = (studio?.name || 'DetailDesk').split(' ');
   return (
-    <a className="c-brand" href={studio?.web ? `https://${studio.web.replace(/^https?:\/\//, '')}` : '#'}>
+    <a className="c-brand" {...(href ? link : { href: '#' })}>
       <span className="gold">{words[0].toUpperCase()}</span> {words.slice(1).join(' ').toUpperCase()}
     </a>
   );

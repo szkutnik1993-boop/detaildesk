@@ -50,7 +50,7 @@ try {
   // ---------- 1. rejestracja nowego studia ----------
   const reg = await j(await fetch(`${F}/public?action=register`, {
     method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ studioName: `Test Studio ${ts}`, email: bEmail, phone: '500600700', consent: true }),
+    body: JSON.stringify({ studioName: `Test Studio ${ts}`, email: bEmail, phone: '500600700', web: 'https://www.Test-Studio.pl/', consent: true }),
   }));
   ok(reg.status === 200 && reg.body.slug, 'rejestracja nowego studia', reg.body?.slug || JSON.stringify(reg.body));
   const slug = reg.body.slug;
@@ -71,6 +71,9 @@ try {
   // ---------- 2. własny link /umow ----------
   const cfg = await j(await fetch(`${F}/public?action=config&s=${slug}`));
   ok(cfg.body.ok && cfg.body.studio.active && cfg.body.studio.name === `Test Studio ${ts}`, 'formularz /umow?s= dla nowego studia działa');
+  ok(cfg.body.studio.contact.web === 'www.test-studio.pl', 'strona www z rejestracji zapisana i ujednolicona', cfg.body.studio.contact.web);
+  const badWeb = await j(await fetch(`${F}/public?action=register`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ studioName: 'Zła strona', email: `delivered+zla${ts}@resend.dev`, web: 'moje studio', consent: true }) }));
+  ok(badWeb.status === 400 && !!badWeb.body.errors.web, 'niepoprawny adres strony odrzucony przy rejestracji');
   // studio B konfiguruje cennik (pierwsza konfiguracja)
   const { error: cfgErr } = await B.c.from('meta').upsert({ key: 'settings', value: { ...metaB.value, onboarded: true, services: [{ id: 'mycie', name: 'Mycie detailingowe', price: 150 }] } }, { onConflict: 'studio_id,key' });
   ok(!cfgErr, 'studio zapisuje własny cennik');

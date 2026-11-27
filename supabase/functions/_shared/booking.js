@@ -51,3 +51,20 @@ export function validateRequest(body, settings, today) {
     calc,
   };
 }
+
+// Adres strony www studia: bez „https://”, bez końcowego „/”, mała domena. null = niepoprawny, '' = brak.
+export function normWeb(v) {
+  let s = String(v ?? '').trim();
+  if (!s) return '';
+  s = s.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+  const [host, ...rest] = s.split('/');
+  const h = host.toLowerCase();
+  if (!/^([a-z0-9-]+\.)+[a-z]{2,}$/.test(h) || h.length > 100 || /\s/.test(s)) return null;
+  return [h, ...rest].join('/').slice(0, 200);
+}
+
+// pełny adres do linku (zawsze https)
+export const webHref = (v) => {
+  const w = normWeb(v);
+  return w ? `https://${w}` : null;
+};

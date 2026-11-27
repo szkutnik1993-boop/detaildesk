@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Icon from '../components/Icon.jsx';
 import { Field } from '../components/ui.jsx';
 import { publicPost, supabase } from '../lib/supabase.js';
+import { normWeb } from '../lib/booking.js';
 
 const KEY = 'dd-login-email';
 const read = () => {
@@ -43,7 +44,7 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [mode, setMode] = useState(() => (window.location.hash.includes('rejestracja') ? 'register' : 'login')); // login | register
-  const [reg, setReg] = useState({ studioName: '', phone: '', consent: false, website: '' });
+  const [reg, setReg] = useState({ studioName: '', phone: '', web: '', consent: false, website: '' });
   const [regErr, setRegErr] = useState({});
 
   const send = async (e) => {
@@ -70,6 +71,11 @@ export default function Login() {
     setBusy(true);
     setMsg(null);
     setRegErr({});
+    if (normWeb(reg.web) === null) {
+      setBusy(false);
+      setRegErr({ web: 'Podaj poprawny adres strony, np. mojestudio.pl (albo zostaw puste).' });
+      return;
+    }
     try {
       localStorage.setItem(KEY, email.trim());
     } catch {
@@ -118,6 +124,19 @@ export default function Login() {
           </Field>
           <Field label="Telefon (opcjonalnie)">
             <input type="tel" value={reg.phone} onChange={(e) => setReg({ ...reg, phone: e.target.value })} />
+          </Field>
+          <Field label="Strona www (opcjonalnie)" hint="Pojawi się w e-mailach do klientów, na PDF i w formularzu rezerwacji.">
+            <input
+              type="url"
+              inputMode="url"
+              autoCapitalize="none"
+              autoCorrect="off"
+              placeholder="np. mojestudio.pl"
+              value={reg.web}
+              onChange={(e) => setReg({ ...reg, web: e.target.value })}
+              onBlur={() => setReg((r) => ({ ...r, web: normWeb(r.web) ?? r.web }))}
+            />
+            {regErr.web && <span className="warn small">{regErr.web}</span>}
           </Field>
           <input className="hp" tabIndex={-1} autoComplete="off" value={reg.website} onChange={(e) => setReg({ ...reg, website: e.target.value })} aria-hidden="true" />
           <label className="check-row consent">
