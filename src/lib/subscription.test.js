@@ -83,8 +83,8 @@ describe('katalog usług (pierwsza konfiguracja)', () => {
   it('wybór z listy tworzy cennik z własnymi cenami', () => {
     const out = servicesFromCatalog([{ id: 'one-step', price: '1400' }, { id: 'ceramika', price: '' }, { id: 'nieistnieje', price: 1 }]);
     expect(out).toEqual([
-      { id: 'one-step', name: 'Korekta One Step', price: 1400, correction: true, coating: false },
-      { id: 'ceramika', name: 'Powłoka ceramiczna', price: 800, correction: false, coating: true },
+      { id: 'one-step', name: 'Korekta One Step', description: '', price: 1400, correction: true, coating: false, reminderMonths: null, hidden: false },
+      { id: 'ceramika', name: 'Powłoka ceramiczna', description: '', price: 800, correction: false, coating: true, reminderMonths: 6, hidden: false },
     ]);
   });
 });

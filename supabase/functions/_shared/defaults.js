@@ -12,12 +12,18 @@ export const DEFAULT_SETTINGS = {
     logo: null, // dataURL logo do PDF (opcjonalnie)
   },
   stages: ['Mycie', 'Dekontaminacja', 'Korekta', 'Powłoka', 'Wnętrze', 'Odbiór'],
+  // Usługa: id, name, description (opcjonalnie), price (małe auto), correction (liczyć stan lakieru),
+  // reminderMonths (zaproszenie po X mies., null = brak), coating (szablon „serwis powłoki”), hidden (ukryta).
+  // Kolejność w tablicy = kolejność w formularzu klienta i w wycenach.
   services: [
-    { id: 'wnetrze', name: 'Detailing wnętrza', price: 300, correction: false, coating: false },
-    { id: 'tapicerka', name: 'Pranie tapicerki', price: 600, correction: false, coating: false },
-    { id: 'one-step', name: 'Korekta One Step', price: 1200, correction: true, coating: false },
-    { id: 'two-step', name: 'Korekta Two Step', price: 1800, correction: true, coating: false },
-    { id: 'ceramika', name: 'Powłoka ceramiczna', price: 800, correction: false, coating: true },
+    { id: 'mycie', name: 'Mycie zewnętrzne', description: 'ręczne, 2 wiadra, felgi, osuszanie', price: 150, correction: false, reminderMonths: null },
+    { id: 'mycie-wosk', name: 'Mycie + wosk', description: 'mycie zewnętrzne i zabezpieczenie lakieru woskiem', price: 250, correction: false, reminderMonths: 2 },
+    { id: 'mycie-sealant', name: 'Mycie + sealant', description: 'mycie zewnętrzne i trwalsze zabezpieczenie sealantem', price: 350, correction: false, reminderMonths: 5 },
+    { id: 'wnetrze', name: 'Detailing wnętrza', price: 300, correction: false, reminderMonths: null },
+    { id: 'tapicerka', name: 'Pranie tapicerki', price: 600, correction: false, reminderMonths: null },
+    { id: 'one-step', name: 'Korekta One Step', price: 1200, correction: true, reminderMonths: null },
+    { id: 'two-step', name: 'Korekta Two Step', price: 1800, correction: true, reminderMonths: null },
+    { id: 'ceramika', name: 'Powłoka ceramiczna', price: 800, correction: false, coating: true, reminderMonths: 6 },
   ],
   sizes: [
     { id: 'small', name: 'Małe', mult: 1 },
@@ -42,6 +48,8 @@ export const DEFAULT_SETTINGS = {
       'Dzień dobry! Kilka dni temu przesłałem wstępną wycenę {studio}: {uslugi} – ok. {cena} zł. Czy mogę zaproponować termin? Pozdrawiam, {podpis}',
     coating:
       'Dzień dobry! Minęło {miesiace} mies. od nałożenia powłoki ceramicznej na {auto}. Zapraszam na serwis powłoki – odświeży ochronę i połysk. Pozdrawiam, {podpis}',
+    refresh:
+      'Dzień dobry! Minęło {miesiace} mies. od usługi „{usluga}” na {auto}. Zapraszam na odświeżenie – lakier znów będzie zabezpieczony i błyszczący. Pozdrawiam, {podpis}',
     ready: 'Dzień dobry! {auto} jest gotowe do odbioru. Pozdrawiam, {podpis} – {studio}',
     confirm: 'Dzień dobry! Potwierdzam termin w {studio}: {termin}. Szczegóły i postęp prac: {link} Pozdrawiam, {podpis}',
   },
@@ -57,11 +65,29 @@ export function mergeSettings(saved) {
     studio: { ...d.studio, ...(saved.studio || {}) },
     reminders: { ...d.reminders, ...(saved.reminders || {}) },
     templates: { ...d.templates, ...(saved.templates || {}) },
-    services: Array.isArray(saved.services) ? saved.services : d.services,
+    services: (Array.isArray(saved.services) ? saved.services : d.services).map((s) => normalizeService(s, saved.reminders?.coatingMonths)),
     sizes: Array.isArray(saved.sizes) && saved.sizes.length ? saved.sizes : d.sizes,
     paints: Array.isArray(saved.paints) && saved.paints.length ? saved.paints : d.paints,
     stages: Array.isArray(saved.stages) && saved.stages.length ? saved.stages : d.stages,
   };
+}
+
+// Starsze zapisy usług: powłoka z flagą „coating” bez własnego terminu → dotychczasowy globalny termin (domyślnie 6 mies.)
+export function normalizeService(s, coatingMonths) {
+  const out = { ...s, correction: !!s.correction, hidden: !!s.hidden };
+  if (out.reminderMonths === undefined) out.reminderMonths = s.coating ? Number(coatingMonths) || 6 : null;
+  const m = Number(out.reminderMonths);
+  out.reminderMonths = Number.isFinite(m) && m > 0 ? Math.round(m) : null;
+  return out;
+}
+
+// przesunięcie usługi w cenniku (kolejność w formularzu klienta)
+export function moveItem(list, index, dir) {
+  const j = index + dir;
+  if (j < 0 || j >= list.length) return list;
+  const next = [...list];
+  [next[index], next[j]] = [next[j], next[index]];
+  return next;
 }
 
 // Część ustawień widoczna publicznie (formularz klienta, polityka prywatności) – bez logo i szablonów.
@@ -69,7 +95,7 @@ export function publicConfig(s) {
   const { name, signature, phone, email, web, address, company, nip } = s.studio;
   return {
     studio: { name, signature, phone, email, web, address, company, nip },
-    services: s.services.map(({ id, name, price, correction }) => ({ id, name, price, correction })),
+    services: s.services.filter((x) => !x.hidden).map(({ id, name, description, price, correction }) => ({ id, name, description: description || '', price, correction })),
     sizes: s.sizes,
     paints: s.paints,
     rounding: s.rounding,

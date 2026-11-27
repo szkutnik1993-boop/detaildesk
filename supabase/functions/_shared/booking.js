@@ -22,7 +22,7 @@ export function validateRequest(body, settings, today) {
   const note = cleanText(b.note, 600);
   const sizeId = String(b.sizeId || '');
   const paintId = String(b.paintId || settings.paints[0]?.id);
-  const serviceIds = Array.isArray(b.serviceIds) ? b.serviceIds.map(String).filter((id) => settings.services.some((s) => s.id === id)) : [];
+  const serviceIds = Array.isArray(b.serviceIds) ? b.serviceIds.map(String).filter((id) => settings.services.some((s) => s.id === id && !s.hidden)) : [];
   const slots = (Array.isArray(b.slots) ? b.slots : [])
     .map((s) => ({ date: String(s?.date || ''), time: String(s?.time || '') }))
     .filter((s) => s.date)

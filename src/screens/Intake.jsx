@@ -102,7 +102,7 @@ export default function Intake({ query }) {
       {!job && (
         <Section title="Usługi do wykonania">
           <div className="chips wrap">
-            {s.services.map((x) => (
+            {s.services.filter((x) => !x.hidden).map((x) => (
               <button
                 key={x.id}
                 className={serviceIds.includes(x.id) ? 'on' : ''}

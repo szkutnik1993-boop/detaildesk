@@ -16,29 +16,39 @@ export function computeReminders({ jobs = [], quotes = [], cars = [], settings, 
   const out = [];
   const carById = Object.fromEntries(cars.map((c) => [c.id, c]));
   const vars = { studio: settings.studio.name, podpis: settings.studio.signature };
-  const months = Number(settings.reminders.coatingMonths) || 6;
+  const coatingMonths = Number(settings.reminders.coatingMonths) || 6;
   const days = Number(settings.reminders.quoteFollowupDays) || 5;
+  const svcById = Object.fromEntries((settings.services || []).map((s) => [s.id, s]));
 
+  // zaproszenia po usługach z terminem odświeżenia (wosk, sealant, powłoka…) – termin z aktualnego cennika
   for (const job of jobs) {
     if (job.status !== 'gotowe' && job.status !== 'odebrane') continue;
-    if (!(job.services || []).some((s) => s.coating)) continue;
-    const id = `coating:${job.id}`;
-    if (log[id]) continue;
     const doneDate = job.doneDate || job.date;
     if (!doneDate) continue;
-    const due = addMonths(doneDate, months);
-    if (due > today) continue;
     const car = carById[job.carId];
-    out.push({
-      id,
-      type: 'coating',
-      due,
-      title: 'Serwis powłoki',
-      subtitle: `${carLabel(car)}${car?.ownerName ? ' · ' + car.ownerName : ''}`,
-      phone: car?.ownerPhone || '',
-      text: fillTemplate(settings.templates.coating, { ...vars, miesiace: months, auto: carLabel(car) }),
-      carId: car?.id,
-    });
+    const seen = new Set();
+    for (const line of job.services || []) {
+      const svc = svcById[line.serviceId];
+      const isCoating = !!(svc ? svc.coating : line.coating);
+      const months = Number(svc ? svc.reminderMonths : line.reminderMonths ?? (line.coating ? coatingMonths : null));
+      if (!Number.isFinite(months) || months <= 0) continue;
+      const id = isCoating ? `coating:${job.id}` : `refresh:${job.id}:${line.serviceId || line.name}`;
+      if (seen.has(id) || log[id]) continue;
+      seen.add(id);
+      const due = addMonths(doneDate, months);
+      if (due > today) continue;
+      const name = svc?.name || line.name;
+      out.push({
+        id,
+        type: isCoating ? 'coating' : 'refresh',
+        due,
+        title: isCoating ? 'Serwis powłoki' : `Odświeżenie: ${name}`,
+        subtitle: `${carLabel(car)}${car?.ownerName ? ' · ' + car.ownerName : ''}`,
+        phone: car?.ownerPhone || '',
+        text: fillTemplate(isCoating ? settings.templates.coating : settings.templates.refresh, { ...vars, miesiace: months, auto: carLabel(car), usluga: name }),
+        carId: car?.id,
+      });
+    }
   }
 
   for (const q of quotes) {

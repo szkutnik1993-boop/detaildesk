@@ -5,8 +5,9 @@ export const SERVICE_CATALOG = [
   {
     group: 'Mycie',
     items: [
-      { id: 'mycie', name: 'Mycie detailingowe', price: 150 },
-      { id: 'mycie-wosk', name: 'Mycie + wosk', price: 250 },
+      { id: 'mycie', name: 'Mycie zewnętrzne', description: 'ręczne, 2 wiadra, felgi, osuszanie', price: 150 },
+      { id: 'mycie-wosk', name: 'Mycie + wosk', description: 'mycie zewnętrzne i zabezpieczenie lakieru woskiem', price: 250, reminderMonths: 2 },
+      { id: 'mycie-sealant', name: 'Mycie + sealant', description: 'mycie zewnętrzne i trwalsze zabezpieczenie sealantem', price: 350, reminderMonths: 5 },
       { id: 'dekontaminacja', name: 'Dekontaminacja lakieru', price: 250 },
       { id: 'silnik', name: 'Detailing komory silnika', price: 250 },
     ],
@@ -32,8 +33,8 @@ export const SERVICE_CATALOG = [
     group: 'Ochrona',
     items: [
       { id: 'wosk', name: 'Wosk / sealant', price: 300 },
-      { id: 'ceramika', name: 'Powłoka ceramiczna', price: 800, coating: true },
-      { id: 'ceramika-premium', name: 'Powłoka ceramiczna premium (3 lata)', price: 1500, coating: true },
+      { id: 'ceramika', name: 'Powłoka ceramiczna', price: 800, coating: true, reminderMonths: 6 },
+      { id: 'ceramika-premium', name: 'Powłoka ceramiczna premium (3 lata)', price: 1500, coating: true, reminderMonths: 6 },
       { id: 'felgi', name: 'Powłoka na felgi', price: 400 },
       { id: 'szyby', name: 'Powłoka na szyby', price: 250 },
       { id: 'ppf-front', name: 'Folia PPF – przód auta', price: 3500 },
@@ -53,7 +54,16 @@ export function servicesFromCatalog(selection) {
     .map(({ id, price }) => {
       const c = CATALOG_ITEMS.find((x) => x.id === id);
       if (!c) return null;
-      return { id: c.id, name: c.name, price: Number(price) > 0 ? Math.round(Number(price)) : c.price, correction: !!c.correction, coating: !!c.coating };
+      return {
+        id: c.id,
+        name: c.name,
+        description: c.description || '',
+        price: Number(price) > 0 ? Math.round(Number(price)) : c.price,
+        correction: !!c.correction,
+        coating: !!c.coating,
+        reminderMonths: c.reminderMonths || null,
+        hidden: false,
+      };
     })
     .filter(Boolean);
 }

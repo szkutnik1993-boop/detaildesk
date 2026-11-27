@@ -320,7 +320,7 @@ export default function JobEdit({ id, query }) {
           ))}
           <select value="" onChange={(e) => addService(e.target.value)}>
             <option value="">+ Dodaj usługę…</option>
-            {s.services.map((x) => (
+            {s.services.filter((x) => !x.hidden).map((x) => (
               <option key={x.id} value={x.id}>{x.name}</option>
             ))}
             <option value="__custom">Własna pozycja…</option>

@@ -350,3 +350,12 @@ details summary::-webkit-details-marker { display: none; }
 .reply-box { background: var(--card-2); border-radius: 10px; padding: 8px 10px; margin-top: 6px; }
 .fb-list { display: flex; flex-direction: column; gap: 10px; }
 .fb-item { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+
+/* cennik: kolejność, opis, przypomnienie, ukrycie */
+.order-btns { display: flex; flex-direction: column; flex: none; }
+.icon-btn.sm-icon { min-width: 30px; height: 22px; border-radius: 6px; }
+.icon-btn.sm-icon:disabled { opacity: 0.25; }
+.svc-desc { min-height: 40px; font-size: 14px; padding: 8px 12px; margin: 6px 0 2px; }
+.months { width: 52px; min-height: 36px; padding: 6px; text-align: center; font-size: 15px; }
+.price-row.is-hidden > .line, .price-row.is-hidden > .svc-desc { opacity: 0.45; }
+.row.wrap { flex-wrap: wrap; }

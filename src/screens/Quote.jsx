@@ -128,7 +128,7 @@ export default function Quote({ id, query }) {
 
       <Section title="Usługi">
         <div className="services">
-          {s.services.map((x) => {
+          {s.services.filter((x) => !x.hidden || form.serviceIds.includes(x.id)).map((x) => {
             const on = form.serviceIds.includes(x.id);
             const item = calc.items.find((i) => i.id === x.id);
             const preview = item || calcQuote({ ...form, serviceIds: [x.id] }, s).items[0];

@@ -18,9 +18,15 @@ describe('zaokrąglanie', () => {
 });
 
 describe('cennik domyślny', () => {
-  it('ma 5 usług z właściwymi cenami', () => {
+  it('ma 8 usług z właściwymi cenami (mycia na początku listy)', () => {
     const prices = Object.fromEntries(DEFAULT_SETTINGS.services.map((s) => [s.id, s.price]));
-    expect(prices).toEqual({ wnetrze: 300, tapicerka: 600, 'one-step': 1200, 'two-step': 1800, ceramika: 800 });
+    expect(prices).toEqual({ mycie: 150, 'mycie-wosk': 250, 'mycie-sealant': 350, wnetrze: 300, tapicerka: 600, 'one-step': 1200, 'two-step': 1800, ceramika: 800 });
+    expect(DEFAULT_SETTINGS.services.slice(0, 3).map((s) => s.name)).toEqual(['Mycie zewnętrzne', 'Mycie + wosk', 'Mycie + sealant']);
+    expect(DEFAULT_SETTINGS.services[0].description).toBe('ręczne, 2 wiadra, felgi, osuszanie');
+  });
+  it('terminy przypomnień: wosk 2 mies., sealant 5 mies., powłoka 6 mies.', () => {
+    const m = Object.fromEntries(DEFAULT_SETTINGS.services.map((s) => [s.id, s.reminderMonths]));
+    expect(m).toMatchObject({ mycie: null, 'mycie-wosk': 2, 'mycie-sealant': 5, ceramika: 6, 'one-step': null });
   });
 });
 

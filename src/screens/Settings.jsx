@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Icon from '../components/Icon.jsx';
 import { Field, Header, Section } from '../components/ui.jsx';
 import { useData, useUI } from '../store.jsx';
-import { DEFAULT_SETTINGS, structuredCloneSafe } from '../lib/defaults.js';
+import { DEFAULT_SETTINGS, moveItem, normalizeService, structuredCloneSafe } from '../lib/defaults.js';
 import { exportAll, importAll, myFeedback, uid, updateMyStudio, uploadLogo } from '../lib/db.js';
 import { studioStatus } from '../lib/subscription.js';
 import { PLATFORM_CONTACT, bookingUrl as bookingLinkFor } from '../config.js';
@@ -42,7 +42,7 @@ export default function Settings() {
   const save = () => ui.run('Zapisuję…', saveInner);
   const saveInner = async () => {
     const clean = structuredCloneSafe(s);
-    clean.services = clean.services.filter((x) => x.name.trim()).map((x) => ({ ...x, price: parseNum(x.price) }));
+    clean.services = clean.services.filter((x) => x.name.trim()).map((x) => normalizeService({ ...x, name: x.name.trim(), description: (x.description || '').trim(), price: parseNum(x.price) }));
     clean.sizes = clean.sizes.map((x) => ({ ...x, mult: parseNum(x.mult, 1) }));
     clean.paints = clean.paints.map((x) => ({ ...x, mult: parseNum(x.mult, 1) }));
     clean.rounding = parseNum(clean.rounding, 10);
@@ -246,27 +246,51 @@ export default function Settings() {
 
       <Section title="Cennik (cena bazowa – małe auto)">
         <div className="card form">
+          <div className="small muted">
+            Kolejność tutaj = kolejność w formularzu klienta. Ukryte usługi nie pojawiają się klientom ani w nowych wycenach, ale zostają w historii zleceń.
+          </div>
           {s.services.map((x, i) => (
-            <div key={x.id} className="price-row">
+            <div key={x.id} className={`price-row ${x.hidden ? 'is-hidden' : ''}`}>
               <div className="line">
-                <input className="grow" value={x.name} onChange={(e) => upd((n) => (n.services[i].name = e.target.value))} />
-                <input className="price" inputMode="decimal" value={x.price} onChange={(e) => upd((n) => (n.services[i].price = e.target.value))} />
+                <div className="order-btns">
+                  <button className="icon-btn sm-icon" aria-label={`Przesuń wyżej: ${x.name}`} disabled={i === 0} onClick={() => upd((n) => (n.services = moveItem(n.services, i, -1)))}>
+                    <Icon name="chevron" size={16} style={{ transform: 'rotate(-90deg)' }} />
+                  </button>
+                  <button className="icon-btn sm-icon" aria-label={`Przesuń niżej: ${x.name}`} disabled={i === s.services.length - 1} onClick={() => upd((n) => (n.services = moveItem(n.services, i, 1)))}>
+                    <Icon name="chevron" size={16} style={{ transform: 'rotate(90deg)' }} />
+                  </button>
+                </div>
+                <input className="grow" value={x.name} aria-label="Nazwa usługi" onChange={(e) => upd((n) => (n.services[i].name = e.target.value))} />
+                <input className="price" inputMode="decimal" value={x.price} aria-label={`Cena: ${x.name}`} onChange={(e) => upd((n) => (n.services[i].price = e.target.value))} />
                 <span className="muted">zł</span>
-                <button className="icon-btn" aria-label="Usuń" onClick={() => confirm(`Usunąć „${x.name}” z cennika?`) && upd((n) => n.services.splice(i, 1))}>
+                <button className="icon-btn" aria-label={`Usuń: ${x.name}`} onClick={() => confirm(`Usunąć „${x.name}” z cennika? (Możesz ją też tylko ukryć.)`) && upd((n) => n.services.splice(i, 1))}>
                   <Icon name="trash" size={18} />
                 </button>
               </div>
-              <div className="row gap small">
+              <input className="svc-desc" value={x.description || ''} placeholder="Opis dla klienta (opcjonalnie), np. ręczne, 2 wiadra, felgi" aria-label={`Opis: ${x.name}`} onChange={(e) => upd((n) => (n.services[i].description = e.target.value))} />
+              <div className="row gap small wrap" style={{ alignItems: 'center' }}>
                 <label className="check-row sm">
-                  <input type="checkbox" checked={!!x.correction} onChange={(e) => upd((n) => (n.services[i].correction = e.target.checked))} /> korekta (stan lakieru)
+                  <input type="checkbox" checked={!!x.correction} onChange={(e) => upd((n) => (n.services[i].correction = e.target.checked))} /> liczyć stan lakieru
                 </label>
                 <label className="check-row sm">
-                  <input type="checkbox" checked={!!x.coating} onChange={(e) => upd((n) => (n.services[i].coating = e.target.checked))} /> powłoka (przypomnienie)
+                  przypomnienie po
+                  <input
+                    className="months"
+                    inputMode="numeric"
+                    placeholder="–"
+                    value={x.reminderMonths ?? ''}
+                    aria-label={`Przypomnienie po ilu miesiącach: ${x.name}`}
+                    onChange={(e) => upd((n) => (n.services[i].reminderMonths = e.target.value.replace(/\D/g, '') || null))}
+                  />
+                  mies.
+                </label>
+                <label className="check-row sm">
+                  <input type="checkbox" checked={!!x.hidden} onChange={(e) => upd((n) => (n.services[i].hidden = e.target.checked))} /> ukryj
                 </label>
               </div>
             </div>
           ))}
-          <button className="btn block" onClick={() => upd((n) => n.services.push({ id: uid(), name: 'Nowa usługa', price: 0, correction: false, coating: false }))}>
+          <button className="btn block" onClick={() => upd((n) => n.services.push({ id: uid(), name: 'Nowa usługa', description: '', price: 0, correction: false, reminderMonths: null, hidden: false }))}>
             <Icon name="plus" /> Dodaj usługę
           </button>
           <button
@@ -310,14 +334,9 @@ export default function Settings() {
 
       <Section title="Przypomnienia i protokół">
         <div className="card form">
-          <div className="grid2">
-            <Field label="Serwis powłoki po (mies.)">
-              <input inputMode="numeric" value={s.reminders.coatingMonths} onChange={(e) => upd((n) => (n.reminders.coatingMonths = e.target.value))} />
-            </Field>
-            <Field label="Wycena bez odpowiedzi po (dni)">
-              <input inputMode="numeric" value={s.reminders.quoteFollowupDays} onChange={(e) => upd((n) => (n.reminders.quoteFollowupDays = e.target.value))} />
-            </Field>
-          </div>
+          <Field label="Wycena bez odpowiedzi po (dni)" hint="Zaproszenia po usługach (wosk, sealant, powłoka…) ustawiasz przy każdej usłudze w cenniku.">
+            <input inputMode="numeric" value={s.reminders.quoteFollowupDays} onChange={(e) => upd((n) => (n.reminders.quoteFollowupDays = e.target.value))} />
+          </Field>
           <Field label="Próg grubości lakieru (µm)" hint="Powyżej tej wartości pole świeci na pomarańczowo.">
             <input inputMode="numeric" value={s.paintThreshold} onChange={(e) => upd((n) => (n.paintThreshold = e.target.value))} />
           </Field>
@@ -341,6 +360,7 @@ export default function Settings() {
             ['quote', 'Wycena'],
             ['followup', 'Wycena bez odpowiedzi'],
             ['coating', 'Serwis powłoki'],
+            ['refresh', 'Odświeżenie po usłudze – wosk, sealant… ({usluga}, {miesiace})'],
             ['confirm', 'Potwierdzenie terminu ({termin}, {link})'],
             ['ready', 'Auto gotowe do odbioru'],
           ].map(([k, l]) => (

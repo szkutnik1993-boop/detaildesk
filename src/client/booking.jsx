@@ -150,7 +150,11 @@ function Booking() {
               return (
                 <button type="button" key={x.id} className={`service ${on ? 'on' : ''}`} onClick={() => toggle(x.id)} aria-pressed={on}>
                   <span className="service-check">{on && <Icon name="check" size={16} />}</span>
-                  <span className="service-name">{x.name}{x.correction && <small>cena zależy od stanu lakieru</small>}</span>
+                  <span className="service-name">
+                    {x.name}
+                    {x.description && <small>{x.description}</small>}
+                    {x.correction && <small>cena zależy od stanu lakieru</small>}
+                  </span>
                   <span className="service-price">{formatMoney(price)} zł</span>
                 </button>
               );
