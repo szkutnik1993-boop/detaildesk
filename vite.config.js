@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { resolve } from 'node:path';
 
 export default defineConfig({
-  base: './', // względne ścieżki: działa pod arc-app.arcdetailing.pl i pod starym adresem github.io
+  base: './', // względne ścieżki: działa pod detaildesk.pl i pod każdym innym adresem
   build: {
     rollupOptions: {
       input: {

@@ -9,7 +9,7 @@ cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 
 // nawigacja w aplikacji studia → index.html; strony klienta obsługujemy osobno
-registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [/\/umow\//, /\/zlecenie\//, /\/prywatnosc\//] }));
+registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [/\/umow\//, /\/zlecenie\//, /\/prywatnosc\//, /\/rejestracja\//] }));
 
 self.addEventListener('push', (event) => {
   let data = {};
