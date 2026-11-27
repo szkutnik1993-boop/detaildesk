@@ -11,6 +11,7 @@ import { ownerNewRequest, adminNewStudio, studioWelcome } from '../_shared/email
 import { STATUSES } from '../_shared/status.js';
 import { formatMoney, servicesLabel } from '../_shared/pricing.js';
 import { safeSlug, trialEnd } from '../_shared/subscription.js';
+import { TERMS_VERSION } from '../_shared/legal.js';
 
 const TOKEN_RE = /^[a-f0-9]{48}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -168,7 +169,9 @@ async function handleRegister(req, db) {
   if (name.length < 2) errors.studioName = 'Podaj nazwę studia.';
   if (!EMAIL_RE.test(email)) errors.email = 'Podaj poprawny e-mail.';
   if (web === null) errors.web = 'Podaj poprawny adres strony, np. mojestudio.pl (albo zostaw puste).';
-  if (b.consent !== true) errors.consent = 'Zgoda jest wymagana.';
+  // akceptacja Regulaminu (z Umową powierzenia) i Polityki prywatności – wymagana, w aktualnej wersji
+  if (b.consent !== true) errors.consent = 'Zaakceptuj Regulamin (w tym Umowę powierzenia) i Politykę prywatności.';
+  else if (b.termsVersion !== TERMS_VERSION) errors.consent = 'Dokumenty zostały zaktualizowane – odśwież stronę i zaakceptuj aktualną wersję.';
   if (Object.keys(errors).length) return json({ ok: false, errors }, 400);
 
   const rl = await rateLimited(db, req, 3); // max 3 nowe studia / godzinę z jednego IP
@@ -190,7 +193,10 @@ async function handleRegister(req, db) {
     }
     const { data: studio, error: sErr } = await db
       .from('studios')
-      .insert({ slug, name, email_from_name: name, contact_email: email, phone: phone || null, plan: 'trial', active_until: trialEnd().toISOString() })
+      .insert({
+        slug, name, email_from_name: name, contact_email: email, phone: phone || null, plan: 'trial', active_until: trialEnd().toISOString(),
+        terms_accepted_at: new Date().toISOString(), terms_version: TERMS_VERSION,
+      })
       .select()
       .single();
     if (sErr) throw sErr;

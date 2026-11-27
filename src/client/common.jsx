@@ -7,7 +7,7 @@ import '../styles.css';
 import './client.css';
 import { webHref } from '../lib/booking.js';
 
-const RESERVED_PATHS = ['umow', 'zlecenie', 'prywatnosc', 'rejestracja', 'assets', 'index.html', '404.html'];
+const RESERVED_PATHS = ['umow', 'zlecenie', 'prywatnosc', 'regulamin', 'rejestracja', 'assets', 'index.html', '404.html'];
 export const studioSlug = () => {
   const q = new URLSearchParams(window.location.search).get('s');
   if (q) return q;
@@ -38,7 +38,18 @@ export function Brand({ studio }) {
   );
 }
 
-export function Footer({ studio }) {
+// stopka: na stronach studia – polityka prywatności studia; na stronach DetailDesk (platform) – Regulamin i Polityka prywatności DetailDesk
+export function Footer({ studio, platform }) {
+  if (platform) {
+    return (
+      <footer className="c-footer">
+        <div>DetailDesk – aplikacja dla studiów detailingu</div>
+        <div>
+          <a href="/regulamin/">Regulamin</a> · <a href="/prywatnosc/">Polityka prywatności</a> · <a href="/">detaildesk.pl</a>
+        </div>
+      </footer>
+    );
+  }
   return (
     <footer className="c-footer">
       <div>{[studio?.name, studio?.address].filter(Boolean).join(' · ')}</div>

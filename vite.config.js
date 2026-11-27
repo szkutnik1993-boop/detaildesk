@@ -11,7 +11,8 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'), // aplikacja studia
         umow: resolve(__dirname, 'umow/index.html'), // formularz dla klientów
         zlecenie: resolve(__dirname, 'zlecenie/index.html'), // strona zlecenia klienta
-        prywatnosc: resolve(__dirname, 'prywatnosc/index.html'), // polityka prywatności
+        prywatnosc: resolve(__dirname, 'prywatnosc/index.html'), // polityka prywatności (studia lub DetailDesk)
+        regulamin: resolve(__dirname, 'regulamin/index.html'), // regulamin DetailDesk z umową powierzenia
       },
     },
     chunkSizeWarningLimit: 1500,

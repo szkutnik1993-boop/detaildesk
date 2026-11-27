@@ -5,6 +5,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync } from 'node:fs';
 import { warsawToday, addDaysISO } from '../supabase/functions/_shared/ics.js';
+import { TERMS_VERSION } from '../supabase/functions/_shared/legal.js';
 
 const E = process.env;
 const URL_ = `https://${E.PROJECT_REF}.supabase.co`;
@@ -50,12 +51,16 @@ try {
   // ---------- 1. rejestracja nowego studia ----------
   const reg = await j(await fetch(`${F}/public?action=register`, {
     method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ studioName: `Test Studio ${ts}`, email: bEmail, phone: '500600700', web: 'https://www.Test-Studio.pl/', consent: true }),
+    body: JSON.stringify({ studioName: `Test Studio ${ts}`, email: bEmail, phone: '500600700', web: 'https://www.Test-Studio.pl/', consent: true, termsVersion: TERMS_VERSION }),
   }));
   ok(reg.status === 200 && reg.body.slug, 'rejestracja nowego studia', reg.body?.slug || JSON.stringify(reg.body));
   const slug = reg.body.slug;
-  const dup = await j(await fetch(`${F}/public?action=register`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ studioName: 'Duplikat', email: bEmail, consent: true }) }));
+  const dup = await j(await fetch(`${F}/public?action=register`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ studioName: 'Duplikat', email: bEmail, consent: true, termsVersion: TERMS_VERSION }) }));
   ok(dup.status === 409, 'drugie konto na ten sam e-mail odrzucone');
+  const regNo = async (extra) =>
+    j(await fetch(`${F}/public?action=register`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ studioName: 'Bez zgody', email: `delivered+bezzgody${ts}@resend.dev`, ...extra }) }));
+  ok((await regNo({})).body.errors?.consent, 'rejestracja bez akceptacji Regulaminu i Polityki prywatności odrzucona');
+  ok((await regNo({ consent: true, termsVersion: '2020-01-01' })).body.errors?.consent?.includes('zaktualizowane'), 'akceptacja nieaktualnej wersji dokumentów odrzucona');
 
   const B = await sessionFor(bEmail);
   const A = await sessionFor(E.OWNER_EMAIL); // ARC Detailing + administrator platformy
@@ -65,6 +70,8 @@ try {
   const left = Math.round((new Date(stB.active_until) - Date.now()) / 86400000);
   ok(stB.plan === 'trial' && stB.active && left === 30, 'okres próbny 30 dni (active_until)', stB.active_until);
   ok(stB.is_admin === false, 'właściciel nowego studia nie jest administratorem');
+  const acceptedAgo = (Date.now() - new Date(stB.terms_accepted_at).getTime()) / 1000;
+  ok(stB.terms_version === TERMS_VERSION && acceptedAgo >= 0 && acceptedAgo < 600, 'zapisano terms_accepted_at i terms_version', `${stB.terms_accepted_at} · ${stB.terms_version}`);
   const metaB = (await B.c.from('meta').select('value').eq('key', 'settings').single()).data;
   ok(metaB.value.onboarded === false, 'nowe studio zaczyna od ekranu pierwszej konfiguracji');
 

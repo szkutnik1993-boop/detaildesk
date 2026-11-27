@@ -3,6 +3,8 @@ import Icon from '../components/Icon.jsx';
 import { Field } from '../components/ui.jsx';
 import { publicPost, supabase } from '../lib/supabase.js';
 import { normWeb } from '../lib/booking.js';
+import { SITE_URL } from '../config.js';
+import { LEGAL_PATHS, TERMS_VERSION } from '../lib/legal.js';
 
 const KEY = 'dd-login-email';
 const read = () => {
@@ -82,7 +84,7 @@ export default function Login() {
       /* brak localStorage */
     }
     try {
-      await publicPost('register', { ...reg, email: email.trim() });
+      await publicPost('register', { ...reg, email: email.trim(), termsVersion: TERMS_VERSION });
     } catch (err) {
       setBusy(false);
       if (err.errors) setRegErr(err.errors);
@@ -139,12 +141,17 @@ export default function Login() {
             {regErr.web && <span className="warn small">{regErr.web}</span>}
           </Field>
           <input className="hp" tabIndex={-1} autoComplete="off" value={reg.website} onChange={(e) => setReg({ ...reg, website: e.target.value })} aria-hidden="true" />
-          <label className="check-row consent">
-            <input type="checkbox" checked={reg.consent} onChange={(e) => setReg({ ...reg, consent: e.target.checked })} />
-            <span className="small">Akceptuję warunki okresu próbnego i zgadzam się na przetwarzanie moich danych w celu założenia i obsługi konta.</span>
+          {/* akceptacja dokumentów – na dole formularza, tuż nad przyciskiem; domyślnie niezaznaczona i wymagana */}
+          <label className="check-row consent terms-consent">
+            <input type="checkbox" required checked={reg.consent} onChange={(e) => setReg({ ...reg, consent: e.target.checked })} aria-describedby="terms-consent-text" />
+            <span className="small" id="terms-consent-text">
+              Zapoznałem się i akceptuję{' '}
+              <a className="gold" href={`${SITE_URL}${LEGAL_PATHS.terms}`} target="_blank" rel="noopener noreferrer">Regulamin</a> (w tym Umowę powierzenia przetwarzania danych) oraz{' '}
+              <a className="gold" href={`${SITE_URL}${LEGAL_PATHS.privacy}`} target="_blank" rel="noopener noreferrer">Politykę prywatności</a>.
+            </span>
           </label>
           {regErr.consent && <span className="warn small">{regErr.consent}</span>}
-          <button className="btn primary block" disabled={busy}>
+          <button className="btn primary block" disabled={busy || !reg.consent} title={!reg.consent ? 'Zaznacz akceptację Regulaminu i Polityki prywatności' : undefined}>
             <Icon name="check" /> {busy ? 'Zakładam konto…' : 'Załóż konto – 30 dni za darmo'}
           </button>
           <button type="button" className="link-btn small" onClick={() => setMode('login')}>Mam już konto – zaloguj się</button>

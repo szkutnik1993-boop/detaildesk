@@ -5,7 +5,8 @@ import { useData, useUI } from '../store.jsx';
 import { DEFAULT_SETTINGS, moveItem, normalizeService, structuredCloneSafe } from '../lib/defaults.js';
 import { exportAll, importAll, myFeedback, uid, updateMyStudio, uploadLogo } from '../lib/db.js';
 import { studioStatus } from '../lib/subscription.js';
-import { PLATFORM_CONTACT, bookingUrl as bookingLinkFor } from '../config.js';
+import { PLATFORM_CONTACT, SITE_URL, bookingUrl as bookingLinkFor } from '../config.js';
+import { LEGAL_PATHS } from '../lib/legal.js';
 import { ExtendNote } from './Onboarding.jsx';
 import { go } from '../router.js';
 import { daysBetween, fmtDateTime, todayISO } from '../lib/dates.js';
@@ -415,7 +416,27 @@ export default function Settings() {
           <button className="btn block" onClick={() => confirm('Wylogować?') && api.signOut()}>Wyloguj</button>
         </div>
       </Section>
-      <div className="small muted center-text" style={{ margin: '24px 0' }}>DetailDesk v2.0 · <a className="gold" href="prywatnosc/" target="_blank" rel="noreferrer">polityka prywatności</a></div>
+      <Section title="Dokumenty">
+        <div className="card form">
+          <a className="list-item doc-link" href={`${SITE_URL}${LEGAL_PATHS.terms}`} target="_blank" rel="noopener noreferrer">
+            <Icon name="file" className="gold" />
+            <span style={{ flex: 1 }}>Regulamin <span className="muted small">(w tym Umowa powierzenia przetwarzania danych)</span></span>
+            <Icon name="chevron" />
+          </a>
+          <a className="list-item doc-link" href={`${SITE_URL}${LEGAL_PATHS.privacy}`} target="_blank" rel="noopener noreferrer">
+            <Icon name="shield" className="gold" />
+            <span style={{ flex: 1 }}>Polityka prywatności</span>
+            <Icon name="chevron" />
+          </a>
+          <div className="small muted">
+            {studio.terms_accepted_at
+              ? `Zaakceptowano ${new Date(studio.terms_accepted_at).toLocaleString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} · wersja ${studio.terms_version}`
+              : 'Akceptacja dokumentów nie została zapisana (konto założone przed wprowadzeniem regulaminu).'}
+          </div>
+        </div>
+      </Section>
+
+      <div className="small muted center-text" style={{ margin: '24px 0' }}>DetailDesk v2.0</div>
 
       {dirty && !readOnly && (
         <div className="save-bar">

@@ -9,7 +9,7 @@ import { cpSync, mkdirSync, rmSync, writeFileSync, copyFileSync, existsSync } fr
 const OUT = 'site-dist';
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT);
-for (const p of ['assets', 'umow', 'zlecenie', 'prywatnosc']) cpSync(`dist/${p}`, `${OUT}/${p}`, { recursive: true });
+for (const p of ['assets', 'umow', 'zlecenie', 'prywatnosc', 'regulamin']) cpSync(`dist/${p}`, `${OUT}/${p}`, { recursive: true });
 for (const f of ['favicon.svg', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png']) if (existsSync(`dist/${f}`)) copyFileSync(`dist/${f}`, `${OUT}/${f}`);
 copyFileSync('site/index.html', `${OUT}/index.html`);
 copyFileSync(`${OUT}/umow/index.html`, `${OUT}/404.html`); // detaildesk.pl/<slug> → formularz rezerwacji

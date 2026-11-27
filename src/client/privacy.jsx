@@ -2,6 +2,23 @@ import { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { Brand, Footer, studioSlug } from './common.jsx';
 import { publicGet } from '../lib/supabase.js';
+import { LegalDoc } from './legal.jsx';
+import { TERMS_VERSION } from '../lib/legal.js';
+import platformMd from '../legal/prywatnosc.md?raw';
+
+// Polityka prywatności DetailDesk (dla właścicieli studiów) – /prywatnosc/ bez ?s=
+function PlatformPrivacy() {
+  return (
+    <div className="c-page">
+      <header className="c-header"><a className="c-brand" href="/"><span className="gold">DETAIL</span>DESK</a></header>
+      <main className="prose">
+        <LegalDoc md={platformMd} />
+        <p className="muted small">Wersja dokumentu: {TERMS_VERSION}</p>
+      </main>
+      <Footer platform />
+    </div>
+  );
+}
 
 // Dane administratora pobierane z Ustawień aplikacji (Studio → nazwa firmy, NIP, adres, e-mail, telefon).
 const Fill = ({ v, label }) => (v ? <b>{v}</b> : <mark className="todo">[{label} – uzupełnij w Ustawieniach]</mark>);
@@ -70,4 +87,5 @@ function Privacy() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<Privacy />);
+// /prywatnosc/?s=<studio> → polityka prywatności studia (dla jego klientów); /prywatnosc/ → polityka DetailDesk
+ReactDOM.createRoot(document.getElementById('root')).render(studioSlug() ? <Privacy /> : <PlatformPrivacy />);

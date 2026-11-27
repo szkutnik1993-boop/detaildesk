@@ -123,3 +123,23 @@ describe('strona www studia', () => {
     expect(webHref('zły adres')).toBeNull();
   });
 });
+
+import { TERMS_VERSION, TERMS_CONSENT_TEXT, LEGAL_PATHS } from './legal.js';
+import { isDraft } from '../client/legal.jsx';
+import termsMd from '../legal/regulamin.md?raw';
+import privacyMd from '../legal/prywatnosc.md?raw';
+describe('dokumenty prawne', () => {
+  it('wersja dokumentów w formacie RRRR-MM-DD', () => {
+    expect(TERMS_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+  it('treść zgody i adresy stron', () => {
+    expect(TERMS_CONSENT_TEXT).toBe('Zapoznałem się i akceptuję Regulamin (w tym Umowę powierzenia przetwarzania danych) oraz Politykę prywatności.');
+    expect(LEGAL_PATHS).toEqual({ terms: 'regulamin/', privacy: 'prywatnosc/' });
+  });
+  it('przed publikacją dokumenty nie mogą być szkicem', () => {
+    // celowo czerwony, dopóki nie wkleimy treści – CI nie opublikuje regulaminu-szkicu
+    expect(isDraft(termsMd), 'Regulamin jest jeszcze szkicem').toBe(false);
+    expect(isDraft(privacyMd), 'Polityka prywatności jest jeszcze szkicem').toBe(false);
+    expect(termsMd).toMatch(/Załącznik nr 1/i);
+  });
+});
