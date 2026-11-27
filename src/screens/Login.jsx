@@ -156,6 +156,7 @@ export default function Login() {
         </form>
       )}
       {msg && <div className="warn small" style={{ marginTop: 12 }}>{msg}</div>}
+      <a className="link-btn small" style={{ marginTop: 18 }} href="#/instalacja">Jak zainstalować DetailDesk na telefonie?</a>
     </div>
   );
 }

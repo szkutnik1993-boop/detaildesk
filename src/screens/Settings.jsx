@@ -166,6 +166,15 @@ export default function Settings() {
         </div>
       </Section>
 
+      <button className="card list-item" onClick={() => go('/instalacja')}>
+        <Icon name="phone" className="gold" />
+        <div style={{ flex: 1 }}>
+          <div className="h3">Jak zainstalować na telefonie</div>
+          <div className="small muted">iPhone, Android (Chrome, Samsung Internet), komputer</div>
+        </div>
+        <Icon name="chevron" />
+      </button>
+
       <Section title="Powiadomienia push">
         <div className="card form">
           <div className="small muted">

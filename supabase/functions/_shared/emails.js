@@ -186,3 +186,20 @@ export function adminReply({ studio, original, reply }) {
   );
   return { subject, html };
 }
+
+export function studioWelcome({ studio, appLink, guideLink, bookingLink, trialUntil }) {
+  const subject = `Witaj w DetailDesk – ${studio.name}`;
+  const html = layout(
+    PLATFORM,
+    `<h2 style="margin:0 0 6px;font-size:20px">Witaj w DetailDesk!</h2>
+    <p style="margin:0">Konto studia <b>${h(studio.name)}</b> jest gotowe. Masz 30 dni bezpłatnego okresu próbnego – do <b>${h(trialUntil)}</b>.</p>
+    <ol style="padding-left:20px;margin:16px 0;line-height:1.7">
+      <li><b>Zainstaluj aplikację na telefonie</b> – dodaj DetailDesk do ekranu, jak zwykłą aplikację. Na iPhonie powiadomienia o nowych rezerwacjach działają tylko po dodaniu do ekranu.</li>
+      <li><b>Zaloguj się</b> kodem z e-maila i ustaw nazwę, logo i cennik (2 minuty).</li>
+      <li><b>Udostępnij klientom swój link</b>: <a href="${h(bookingLink)}" style="color:#9c7a35">${h(bookingLink.replace(/^https:\/\//, ''))}</a></li>
+    </ol>
+    ${button(guideLink, 'Jak zainstalować na telefonie')}${button(appLink, 'Otwórz DetailDesk', false)}
+    <p style="color:#6B6F76;font-size:13px">Pytania lub pomysły? Odpowiedz na tę wiadomość albo napisz z aplikacji: Ustawienia → Pomysły i uwagi.</p>`
+  );
+  return { subject, html };
+}

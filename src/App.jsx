@@ -17,6 +17,7 @@ import JobEdit from './screens/JobEdit.jsx';
 import Settings from './screens/Settings.jsx';
 import Onboarding from './screens/Onboarding.jsx';
 import Admin from './screens/Admin.jsx';
+import InstallGuide from './screens/InstallGuide.jsx';
 
 const TABS = [
   { to: '/', label: 'Dziś', icon: 'today', match: (p) => p[0] === undefined },
@@ -40,6 +41,7 @@ function screen({ parts: p, query }, studio) {
   if (a === 'job') return <JobEdit id={b === 'new' ? null : b} query={query} />;
   if (a === 'settings') return <Settings />;
   if (a === 'admin' && studio?.is_admin) return <Admin />;
+  if (a === 'instalacja') return <InstallGuide />;
   return <Today />;
 }
 

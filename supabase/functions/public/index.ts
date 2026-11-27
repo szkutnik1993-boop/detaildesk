@@ -7,7 +7,7 @@ import {
 import { publicConfig } from '../_shared/defaults.js';
 import { validateRequest, cleanText } from '../_shared/booking.js';
 import { buildIcs, warsawToday } from '../_shared/ics.js';
-import { ownerNewRequest, adminNewStudio } from '../_shared/emails.js';
+import { ownerNewRequest, adminNewStudio, studioWelcome } from '../_shared/emails.js';
 import { STATUSES } from '../_shared/status.js';
 import { formatMoney, servicesLabel } from '../_shared/pricing.js';
 import { safeSlug, trialEnd } from '../_shared/subscription.js';
@@ -200,6 +200,9 @@ async function handleRegister(req, db) {
     const failed = steps.find((s) => s.error);
     if (failed) throw failed.error;
 
+    // e-mail powitalny z linkiem do instrukcji instalacji na telefonie
+    const trialUntil = new Date(studio.active_until).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Warsaw' });
+    await sendEmail({ to: email, fromName: 'DetailDesk', replyTo: env('OWNER_EMAIL') || undefined, ...studioWelcome({ studio, appLink: appBase(), guideLink: `${appBase()}#/instalacja`, bookingLink: bookingLink(slug), trialUntil }) }).catch((e) => console.error(e));
     if (env('OWNER_EMAIL')) {
       await sendEmail({ to: env('OWNER_EMAIL'), fromName: 'DetailDesk', ...adminNewStudio({ studio, email, phone, adminLink: `${appBase()}#/admin` }) }).catch((e) => console.error(e));
     }

@@ -1,4 +1,5 @@
 import Icon from '../components/Icon.jsx';
+import { InstallBanner } from './InstallGuide.jsx';
 import { Empty, Header, JobCard, Section } from '../components/ui.jsx';
 import { useData, useUI } from '../store.jsx';
 import { go } from '../router.js';
@@ -41,6 +42,8 @@ export default function Today() {
           </button>
         }
       />
+
+      <InstallBanner />
 
       <div className="big-actions">
         <button className="btn primary big" onClick={() => go('/quote/new')}>

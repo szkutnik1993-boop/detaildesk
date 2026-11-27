@@ -19,6 +19,24 @@ const ok = (cond, msg, extra = '') => {
 };
 const j = async (r) => ({ status: r.status, body: await r.json().catch(() => null) });
 
+// Sprzątanie także po przerwanym teście: zlecenie, protokoły, auto i zdjęcia testowe (klucz serwisowy, tylko po tokenie testu)
+let testToken = null;
+let passed = false;
+async function cleanupByToken() {
+  if (!testToken || (passed && E.KEEP)) return;
+  const H = { apikey: E.SERVICE_KEY, Authorization: `Bearer ${E.SERVICE_KEY}` };
+  const rows = await (await fetch(`${URL_}/rest/v1/jobs?token=eq.${testToken}&select=id,data`, { headers: H })).json().catch(() => []);
+  for (const r of Array.isArray(rows) ? rows : []) {
+    const paths = (r.data.timeline || []).filter((t) => t.path).map((t) => t.path);
+    if (paths.length) {
+      await fetch(`${URL_}/storage/v1/object/photos`, { method: 'DELETE', headers: { ...H, 'content-type': 'application/json' }, body: JSON.stringify({ prefixes: paths }) });
+    }
+    await fetch(`${URL_}/rest/v1/protocols?data->>jobId=eq.${r.id}`, { method: 'DELETE', headers: H });
+    await fetch(`${URL_}/rest/v1/jobs?id=eq.${r.id}`, { method: 'DELETE', headers: H });
+    if (r.data.carId) await fetch(`${URL_}/rest/v1/cars?id=eq.${r.data.carId}`, { method: 'DELETE', headers: H });
+  }
+}
+try {
 // 1. Klient wysyła zapytanie (bez logowania)
 const tomorrow = addDaysISO(warsawToday(), 1);
 const req = await j(
@@ -34,6 +52,8 @@ const req = await j(
 );
 ok(req.status === 200 && /^[a-f0-9]{48}$/.test(req.body?.token || ''), 'zapytanie przyjęte, token 192-bit', req.body?.token?.slice(0, 8) + '…');
 const token = req.body.token;
+testToken = token;
+if (E.E2E_FAIL_EARLY) throw new Error('symulowana awaria testu (sprawdzenie sprzątania)');
 
 const bad = await j(await fetch(`${F}/public?action=request`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ make: 'x', consent: false }) }));
 ok(bad.status === 400 && bad.body.errors.consent, 'zapytanie bez zgody RODO odrzucone');
@@ -146,4 +166,8 @@ if (!E.KEEP) {
   await owner.from('cars').delete().eq('id', job.carId);
   console.log('(zlecenie testowe usunięte)');
 }
+passed = true;
 console.log(`\nWSZYSTKO OK – ${pass} sprawdzeń. Link testowy: https://detaildesk.pl/zlecenie/?t=${token}`);
+} finally {
+  await cleanupByToken().catch((e) => console.error('sprzątanie:', e.message));
+}
