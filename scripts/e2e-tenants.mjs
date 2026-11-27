@@ -239,6 +239,24 @@ try {
   const arc = (await A.c.rpc('my_studio')).data;
   ok(arc.slug === 'arc-detailing' && arc.active && arc.plan === 'lifetime' && arc.is_admin, 'ARC Detailing: bezterminowo, administrator');
   ok((await j(await fetch(`${F}/public?action=config`))).body.studio.slug === 'arc-detailing', 'stary link /umow/ bez parametru prowadzi do ARC Detailing');
+
+  // ---------- 9. usunięcie studia przez administratora (adres studia jako drugie potwierdzenie) ----------
+  const filesBefore = (await sql(`select count(*)::int n from storage.objects where bucket_id in ('photos','logos') and name like '${studioB}/%'`))[0].n;
+  ok((await ownerFn(B.token, { action: 'admin-delete-studio', studioId: studioB, confirmSlug: slug })).status === 403, 'zwykłe studio nie może usuwać studiów');
+  const wrong = await ownerFn(A.token, { action: 'admin-delete-studio', studioId: studioB, confirmSlug: 'zly-adres' });
+  ok(wrong.status === 400 && (await sql(`select count(*)::int n from studios where id = '${studioB}'`))[0].n === 1, 'zły adres studia → nic nie usunięto');
+  ok((await ownerFn(A.token, { action: 'admin-delete-studio', studioId: arcId, confirmSlug: 'arc-detailing' })).status === 400, 'nie można usunąć własnego studia administratora');
+  const del = await ownerFn(A.token, { action: 'admin-delete-studio', studioId: studioB, confirmSlug: slug });
+  ok(del.status === 200 && del.body.ok && del.body.users === 1 && del.body.files === filesBefore && filesBefore >= 2, 'administrator usunął studio', `plików: ${del.body.files}, kont: ${del.body.users}`);
+  const remaining = (await sql(`select (select count(*) from studios where id = '${studioB}')::int studio, (select count(*) from auth.users where id = '${userB}')::int konto,
+    (select count(*) from cars where studio_id = '${studioB}')::int auta, (select count(*) from jobs where studio_id = '${studioB}')::int zlecenia,
+    (select count(*) from meta where studio_id = '${studioB}')::int ustawienia, (select count(*) from storage.objects where name like '${studioB}/%')::int pliki`))[0];
+  ok(Object.values(remaining).every((v) => v === 0), 'usunięto: studio, konto właściciela, auta, zlecenia, ustawienia i pliki', JSON.stringify(remaining));
+  const kept = await sql(`select studio_id, studio_name from payments where invoice_number = 'FV TEST ${ts}'`);
+  ok(kept.length === 1 && kept[0].studio_id === null && kept[0].studio_name === `Test Studio ${ts}`, 'wpłata zostaje w ewidencji (z nazwą studia)');
+  await sql(`delete from payments where invoice_number = 'FV TEST ${ts}'`); // to była wpłata testowa
+  studioB = null;
+  userB = null;
 } finally {
   if (studioB) {
     // pliki – przez API Storage (SQL nie może usuwać plików), potem studio (reszta usuwa się kaskadowo)

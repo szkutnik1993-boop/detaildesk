@@ -59,6 +59,33 @@ Deno.serve(async (req) => {
       return json({ ok: true, to: fb.author_email });
     }
 
+    // administrator platformy: trwałe usunięcie studia (drugie potwierdzenie = wpisany adres studia)
+    if (body.action === 'admin-delete-studio') {
+      const { data: isAdm } = await db.from('app_admins').select('email').eq('email', (me.user.email || '').toLowerCase()).maybeSingle();
+      if (!isAdm) return json({ ok: false, error: 'Brak uprawnień' }, 403);
+      const target = await getStudio(db, { id: body.studioId });
+      if (!target) return json({ ok: false, error: 'Nie znaleziono studia' }, 404);
+      if (String(body.confirmSlug || '').trim() !== target.slug) return json({ ok: false, error: 'Wpisany adres studia nie zgadza się – nic nie usunięto.' }, 400);
+      if (target.id === studio.id) return json({ ok: false, error: 'Nie można usunąć własnego studia administratora.' }, 400);
+      // 1) pliki (zdjęcia, logo) – przez API Storage
+      const { data: files, error: fErr } = await db.rpc('admin_studio_files', { p_studio: target.id });
+      if (fErr) throw fErr;
+      let removed = 0;
+      for (const bucket of ['photos', 'logos']) {
+        const paths = (files || []).filter((f) => f.bucket === bucket).map((f) => f.name);
+        for (let i = 0; i < paths.length; i += 100) {
+          const { error } = await db.storage.from(bucket).remove(paths.slice(i, i + 100));
+          if (error) throw error;
+          removed += Math.min(100, paths.length - i);
+        }
+      }
+      // 2) dane i konto właściciela
+      const { data: del, error: dErr } = await db.rpc('admin_delete_studio_data', { p_studio: target.id });
+      if (dErr) return json({ ok: false, error: dErr.message }, 400);
+      console.log('usunięto studio', target.slug, 'przez', me.user.email);
+      return json({ ok: true, ...del, files: removed });
+    }
+
     if (body.action === 'test-push') {
       const r = await sendPushAll(db, studio.id, { title: 'DetailDesk', body: 'Powiadomienia działają ✓', url: appBase() });
       return json({ ok: true, ...r });

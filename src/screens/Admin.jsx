@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Icon from '../components/Icon.jsx';
 import { Empty, Field, Header, Section } from '../components/ui.jsx';
-import { useUI } from '../store.jsx';
+import { useData, useUI } from '../store.jsx';
 import { adminExtendStudio, adminListFeedback, adminListSales, adminListStudios, adminMarkPaid, adminSetAnnouncement, adminSetBlocked, adminSetFeedbackStatus, adminSetNotes } from '../lib/db.js';
 import { QUARTER_LIMIT_CENTS, defaultPriceCents, limitLevel, quarterRange, salesCsv, sumInRange } from '../lib/revenue.js';
 import { downloadBlob } from '../lib/utils.js';
@@ -13,6 +13,8 @@ import { fmtDate, fmtDateTime, toISO, todayISO } from '../lib/dates.js';
 import { ownerCall, supabase } from '../lib/supabase.js';
 import { bookingUrl } from '../config.js';
 
+// kwota z groszami (licznik limitu, ewidencja)
+const zlGr = (cents) => `${formatMoney(Math.floor(Math.round(cents) / 100))},${String(Math.round(cents) % 100).padStart(2, '0')} zł`;
 const zl = (cents) => `${formatMoney(Math.round((cents || 0) / 100))} zł`;
 const monthStart = () => {
   const d = new Date();
@@ -21,7 +23,7 @@ const monthStart = () => {
 const daysAgo = (ts) => (ts ? Math.floor((Date.now() - new Date(ts).getTime()) / 86400000) : null);
 const STATE_CLS = { trial: 'st-planned', paid: 'st-ready', lifetime: 'st-ready', expired: 'st-done' };
 
-function StudioCard({ s, studios, reload }) {
+function StudioCard({ s, studios, reload, myStudioId }) {
   const ui = useUI();
   const [open, setOpen] = useState(false);
   const [notes, setNotes] = useState(s.notes || '');
@@ -41,6 +43,26 @@ function StudioCard({ s, studios, reload }) {
       ui.toast(`Aktywne do ${fmtDate(toISO(new Date(until)))}`);
       reload();
     });
+
+  const isMine = s.id === myStudioId;
+  // usunięcie studia – podwójne potwierdzenie: 1) okno z listą skutków, 2) wpisanie adresu studia (sprawdzane też na serwerze)
+  const removeStudio = () => {
+    const step1 = confirm(
+      `Usunąć studio „${s.name}”?\n\n` +
+        `Trwale zostaną usunięte: konto właściciela (${s.contact_email}), auta, klienci, zlecenia, wyceny, protokoły, zdjęcia, logo i ustawienia.\n` +
+        `Wpłaty w ewidencji sprzedaży zostaną zachowane.\n\n` +
+        `Tego NIE da się cofnąć.`
+    );
+    if (!step1) return;
+    const typed = prompt(`Drugie potwierdzenie.\nAby trwale usunąć studio, wpisz jego adres:\n\n${s.slug}`);
+    if (typed === null) return;
+    if (typed.trim() !== s.slug) return alert('Wpisany adres nie zgadza się – nic nie usunięto.');
+    ui.run('Usuwam studio…', async () => {
+      const r = await ownerCall({ action: 'admin-delete-studio', studioId: s.id, confirmSlug: typed.trim() });
+      ui.toast(`Usunięto „${r.name}” (plików: ${r.files})`);
+      reload();
+    });
+  };
 
   const markPaid = () =>
     ui.run('Zapisuję wpłatę…', async () => {
@@ -120,6 +142,17 @@ function StudioCard({ s, studios, reload }) {
           >
             {s.blocked ? 'Odblokuj studio' : 'Zablokuj studio'}
           </button>
+          {!isMine && (
+            <div className="danger-zone">
+              <div className="small">
+                <b>Usunięcie studia</b> – trwale usuwa konto właściciela i wszystkie dane studia: auta, klientów, zlecenia, wyceny, protokoły, zdjęcia, logo i ustawienia.
+                Wpłaty w ewidencji sprzedaży zostają.
+              </div>
+              <button className="btn block danger" style={{ marginTop: 0 }} onClick={removeStudio}>
+                <Icon name="trash" /> Usuń studio i wszystkie dane
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -171,6 +204,7 @@ function FeedbackItem({ f, reload }) {
 
 export default function Admin() {
   const ui = useUI();
+  const { studio: myStudio } = useData();
   const [tab, setTab] = useState('studios');
   const [studios, setStudios] = useState(null);
   const [sales, setSales] = useState([]);
@@ -227,10 +261,10 @@ export default function Admin() {
         <div className="row between">
           <div>
             <div className="small muted">Przychód – {q.label}</div>
-            <div className="quarter-sum">{zl(qRevenue)}</div>
+            <div className="quarter-sum">{zlGr(qRevenue)}</div>
           </div>
           <div className="right-col small">
-            <span className="muted">limit {zl(QUARTER_LIMIT_CENTS)}</span>
+            <span className="muted">limit {zlGr(QUARTER_LIMIT_CENTS)}</span>
             <b>{lim.pct.toFixed(1).replace('.', ',')}%</b>
           </div>
         </div>
@@ -238,7 +272,7 @@ export default function Admin() {
           <div style={{ width: `${Math.min(100, lim.pct)}%` }} />
         </div>
         <div className="small muted">
-          {lim.level === 'danger' ? '⚠️ Ponad 95% limitu – rozważ rejestrację działalności.' : lim.level === 'warn' ? 'Ponad 80% limitu kwartalnego.' : `Do limitu zostało ${zl(lim.left)}.`}
+          {lim.level === 'danger' ? '⚠️ Ponad 95% limitu – rozważ rejestrację działalności.' : lim.level === 'warn' ? 'Ponad 80% limitu kwartalnego.' : `Do limitu zostało ${zlGr(lim.left)}.`}
         </div>
         <div className="row gap wrap" style={{ marginTop: 10 }}>
           <button className="btn sm grow" onClick={() => exportCsv(q.start, q.end, `ewidencja-sprzedazy-${year}-Q${q.quarter}.csv`)}><Icon name="download" size={18} /> CSV – kwartał</button>
@@ -256,7 +290,7 @@ export default function Admin() {
       {tab === 'studios' && (
         <>
           <div className="small muted" style={{ marginBottom: 10 }}>Stuknij studio, aby przedłużyć, dodać notatkę lub zablokować. Widzisz tylko liczby – bez danych klientów studiów.</div>
-          {studios.map((s) => <StudioCard key={s.id} s={s} studios={studios} reload={load} />)}
+          {studios.map((s) => <StudioCard key={s.id} s={s} studios={studios} reload={load} myStudioId={myStudio?.id} />)}
         </>
       )}
 

@@ -423,3 +423,4 @@ details summary::-webkit-details-marker { display: none; }
 .fin-note { text-align: center; margin: 26px 0 8px; }
 .grid2.keep-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .tabbar button span { font-size: 10.5px; text-align: center; line-height: 1.15; }
+.danger-zone { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; padding: 12px; border-radius: 14px; border: 1px solid rgba(224,106,95,0.45); background: rgba(224,106,95,0.08); }
