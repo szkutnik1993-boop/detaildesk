@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0E0F11" />
+    <meta name="color-scheme" content="dark" />
+    <title>DetailDesk – aplikacja dla studiów detailingu</title>
+    <meta name="description" content="Rezerwacje online, wyceny, protokoły przyjęcia z pomiarem lakieru i postęp prac dla klientów – w jednej aplikacji na telefonie. 30 dni za darmo." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <style>
+      :root { --bg: #0e0f11; --card: #17191c; --line: #26292e; --text: #f2f2f0; --muted: #a3a7ae; --gold: #c9a45c; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; line-height: 1.55; }
+      .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+      header { display: flex; justify-content: space-between; align-items: center; padding: 22px 0; }
+      .brand { font-weight: 800; letter-spacing: 4px; font-size: 18px; }
+      .brand span { color: var(--gold); }
+      a { color: inherit; }
+      .login { color: var(--muted); text-decoration: none; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; }
+      .hero { padding: 56px 0 40px; }
+      h1 { font-size: clamp(32px, 6vw, 56px); line-height: 1.08; margin: 0 0 18px; letter-spacing: -0.5px; }
+      h1 em { font-style: normal; color: var(--gold); }
+      .lead { font-size: 19px; color: var(--muted); max-width: 640px; margin: 0 0 30px; }
+      .cta { display: inline-flex; align-items: center; gap: 10px; background: var(--gold); color: #17130b; font-weight: 700; text-decoration: none; padding: 16px 24px; border-radius: 14px; font-size: 17px; }
+      .note { color: var(--muted); font-size: 14px; margin-top: 12px; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; padding: 30px 0 50px; }
+      .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px; }
+      .card h3 { margin: 0 0 6px; font-size: 17px; }
+      .card p { margin: 0; color: var(--muted); font-size: 15px; }
+      .card b { color: var(--gold); }
+      .final { text-align: center; padding: 30px 0 60px; }
+      footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; padding: 22px 0 40px; display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: space-between; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="brand">DETAIL<span>DESK</span></div>
+        <a class="login" href="https://app.detaildesk.pl/">Zaloguj się</a>
+      </header>
+
+      <section class="hero">
+        <h1>Aplikacja dla <em>studiów detailingu</em>.<br />Klienci rezerwują sami.</h1>
+        <p class="lead">Własny link do rezerwacji z Twoim cennikiem, wyceny i SMS-y jednym stuknięciem, protokół przyjęcia z pomiarem lakieru i podpisem, a klient na bieżąco widzi zdjęcia z kolejnych etapów pracy.</p>
+        <a class="cta" href="https://app.detaildesk.pl/rejestracja/">Załóż konto studia – 30 dni za darmo →</a>
+        <div class="note">Bez karty płatniczej. Działa na iPhonie i Androidzie jako aplikacja z ekranu początkowego.</div>
+      </section>
+
+      <section class="grid">
+        <div class="card"><h3>Rezerwacje online</h3><p>Link <b>detaildesk.pl/twoje-studio</b> – klient wybiera usługi, widzi cenę orientacyjną i proponuje terminy. Ty dostajesz powiadomienie.</p></div>
+        <div class="card"><h3>Potwierdzenia i przypomnienia</h3><p>Potwierdzenie terminu z plikiem kalendarza, przypomnienie dzień przed wizytą i „Zapraszamy po odbiór” – e-mailem z nazwą Twojego studia.</p></div>
+        <div class="card"><h3>Protokół przyjęcia</h3><p>Pomiar grubości lakieru na schemacie auta, zdjęcia uszkodzeń, podpis klienta palcem i PDF wysyłany mailem.</p></div>
+        <div class="card"><h3>Postęp prac dla klienta</h3><p>Zdjęcia z etapów (mycie, korekta, powłoka) trafiają na stronę zlecenia klienta – bez instalowania czegokolwiek.</p></div>
+        <div class="card"><h3>Wyceny w 10 sekund</h3><p>Cennik z mnożnikami za wielkość auta i stan lakieru, gotowy SMS i oferta PDF z Twoim logo.</p></div>
+        <div class="card"><h3>Karta auta i przypomnienia</h3><p>Historia usług i użytej chemii, zdjęcia przed/po oraz przypomnienia o serwisie powłoki po 6 miesiącach.</p></div>
+      </section>
+
+      <section class="final">
+        <a class="cta" href="https://app.detaildesk.pl/rejestracja/">Wypróbuj 30 dni za darmo →</a>
+      </section>
+
+      <footer>
+        <span>© DetailDesk</span>
+        <span><a href="https://app.detaildesk.pl/">Logowanie dla studiów</a> · <a href="mailto:arccardetailing@gmail.com">Kontakt</a></span>
+      </footer>
+    </div>
+  </body>
+</html>

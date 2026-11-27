@@ -6,7 +6,13 @@ import '@fontsource/space-grotesk/700.css';
 import '../styles.css';
 import './client.css';
 
-export const studioSlug = () => new URLSearchParams(window.location.search).get('s') || '';
+const RESERVED_PATHS = ['umow', 'zlecenie', 'prywatnosc', 'rejestracja', 'assets', 'index.html', '404.html'];
+export const studioSlug = () => {
+  const q = new URLSearchParams(window.location.search).get('s');
+  if (q) return q;
+  const first = window.location.pathname.split('/').filter(Boolean)[0] || '';
+  return first && !RESERVED_PATHS.includes(first) && /^[a-z0-9-]+$/.test(first) ? first : '';
+};
 export const withSlug = (path, slug = studioSlug()) => (slug ? `${path}?s=${encodeURIComponent(slug)}` : path);
 
 export function Brand({ studio }) {
@@ -26,7 +32,7 @@ export function Footer({ studio }) {
       <div>
         {studio?.phone && <a href={`tel:${studio.phone.replace(/[^\d+]/g, '')}`}>tel. {studio.phone}</a>}
         {studio?.phone && ' · '}
-        <a href={withSlug('../prywatnosc/', studio?.slug)}>Polityka prywatności</a>
+        <a href={withSlug('/prywatnosc/', studio?.slug)}>Polityka prywatności</a>
       </div>
     </footer>
   );

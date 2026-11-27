@@ -10,7 +10,7 @@ import { buildIcs, warsawToday } from '../_shared/ics.js';
 import { ownerNewRequest, adminNewStudio } from '../_shared/emails.js';
 import { STATUSES } from '../_shared/status.js';
 import { formatMoney, servicesLabel } from '../_shared/pricing.js';
-import { slugify, trialEnd } from '../_shared/subscription.js';
+import { safeSlug, trialEnd } from '../_shared/subscription.js';
 
 const TOKEN_RE = /^[a-f0-9]{48}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -179,7 +179,7 @@ async function handleRegister(req, db) {
   }
   const userId = created.user.id;
   try {
-    const base = slugify(name);
+    const base = safeSlug(name);
     let slug = base;
     for (let i = 2; i < 50; i++) {
       const { data: taken } = await db.from('studios').select('id').eq('slug', slug).maybeSingle();

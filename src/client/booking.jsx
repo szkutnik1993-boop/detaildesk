@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import ReactDOM from 'react-dom/client';
-import { Brand, Footer, studioSlug } from './common.jsx';
+import { Brand, Footer, studioSlug, withSlug } from './common.jsx';
 import Icon from '../components/Icon.jsx';
 import { calcQuote, formatMoney } from '../lib/pricing.js';
 import { validateRequest } from '../lib/booking.js';
@@ -231,7 +231,7 @@ function Booking() {
               <input type="checkbox" checked={f.consent} onChange={(e) => set({ consent: e.target.checked })} />
               <span className="small">
                 Wyrażam zgodę na przetwarzanie moich danych osobowych w celu obsługi zapytania i realizacji usługi, zgodnie z{' '}
-                <a className="gold" href="../prywatnosc/" target="_blank" rel="noreferrer">polityką prywatności</a>.
+                <a className="gold" href={withSlug('/prywatnosc/', studio?.slug)} target="_blank" rel="noreferrer">polityką prywatności</a>.
               </span>
             </label>
             <Err k="consent" />

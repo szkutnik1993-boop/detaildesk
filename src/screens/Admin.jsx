@@ -9,6 +9,7 @@ import { studioStatus } from '../lib/subscription.js';
 import { formatMoney } from '../lib/pricing.js';
 import { fmtDate, fmtDateTime, toISO } from '../lib/dates.js';
 import { ownerCall, supabase } from '../lib/supabase.js';
+import { bookingUrl } from '../config.js';
 
 const zl = (cents) => `${formatMoney(Math.round((cents || 0) / 100))} zł`;
 const monthStart = () => {
@@ -26,7 +27,7 @@ function StudioCard({ s, reload }) {
   const st = s.blocked ? { label: 'Zablokowane', state: 'expired', daysLeft: 0 } : studioStatus(s);
   const idle = daysAgo(s.last_sign_in);
   const risk = !s.blocked && st.state !== 'expired' && (idle === null || idle >= 14 || Number(s.bookings_month) + Number(s.jobs_month) === 0);
-  const booking = new URL(`umow/?s=${s.slug}`, document.baseURI.replace(/#.*$/, '')).toString();
+  const booking = bookingUrl(s.slug);
 
   const extend = (months) =>
     ui.run('Przedłużam…', async () => {

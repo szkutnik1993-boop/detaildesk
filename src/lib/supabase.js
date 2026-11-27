@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_ANON_KEY, SUPABASE_URL, FUNCTIONS_URL } from '../config.js';
+import { SUPABASE_ANON_KEY, SUPABASE_URL, FUNCTIONS_URL, SITE_URL } from '../config.js';
 import { authStorage, requestPersistentStorage } from './authStorage.js';
 
 requestPersistentStorage();
@@ -45,4 +45,4 @@ export async function publicPost(action, body) {
   return out;
 }
 
-export const clientJobUrl = (token) => new URL(`zlecenie/?t=${token}`, document.baseURI.replace(/#.*$/, '')).toString();
+export const clientJobUrl = (token) => `${SITE_URL}zlecenie/?t=${token}`;

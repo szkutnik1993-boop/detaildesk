@@ -1,4 +1,7 @@
-name: Testy i publikacja na GitHub Pages
+name: Testy i publikacja
+
+# app.detaildesk.pl  ← GitHub Pages tego repozytorium (aplikacja studiów + panel administratora)
+# detaildesk.pl      ← repozytorium szkutnik1993-boop/detaildesk-pl (strony klientów: formularze /<slug>, zlecenia)
 
 on:
   push:
@@ -27,12 +30,18 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: cp dist/index.html dist/404.html
+      - run: node scripts/build-site.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: site-dist
+          include-hidden-files: true
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
-  deploy:
+  deploy-app:
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -41,3 +50,30 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  deploy-site:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEY: ${{ secrets.SITE_DEPLOY_KEY != '' }}
+    steps:
+      - uses: actions/download-artifact@v4
+        if: env.HAS_KEY == 'true'
+        with:
+          name: site
+          path: site-dist
+      - name: Publikacja detaildesk.pl (repozytorium detaildesk-pl, gałąź gh-pages)
+        if: env.HAS_KEY == 'true'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          deploy_key: ${{ secrets.SITE_DEPLOY_KEY }}
+          external_repository: szkutnik1993-boop/detaildesk-pl
+          publish_branch: gh-pages
+          publish_dir: ./site-dist
+          cname: detaildesk.pl
+          force_orphan: true
+          user_name: detaildesk-ci
+          user_email: detaildesk-ci@users.noreply.github.com
+          commit_message: 'Publikacja z detaildesk'
+      - if: env.HAS_KEY != 'true'
+        run: echo "Brak sekretu SITE_DEPLOY_KEY – pomijam publikację detaildesk.pl"

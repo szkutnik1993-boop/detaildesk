@@ -55,3 +55,10 @@ export function slugify(name) {
 }
 
 export const SLUG_RE = /^[a-z0-9]([a-z0-9-]{0,48}[a-z0-9])?$/;
+
+// ścieżki zajęte na detaildesk.pl – studio nie może dostać takiego adresu
+export const RESERVED_SLUGS = ['umow', 'zlecenie', 'prywatnosc', 'rejestracja', 'assets', 'app', 'admin', 'api', 'www', 'mail', 'pomoc', 'kontakt', 'regulamin', 'logowanie', 'studio', 'detaildesk'];
+export function safeSlug(name) {
+  const s = slugify(name);
+  return RESERVED_SLUGS.includes(s) ? `${s}-studio`.slice(0, 50) : s;
+}

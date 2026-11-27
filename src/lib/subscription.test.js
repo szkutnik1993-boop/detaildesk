@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { studioStatus, dueReminder, extendedUntil, trialEnd, slugify, SLUG_RE, TRIAL_DAYS } from './subscription.js';
+import { studioStatus, dueReminder, extendedUntil, trialEnd, slugify, safeSlug, RESERVED_SLUGS, SLUG_RE, TRIAL_DAYS } from './subscription.js';
 import { CATALOG_ITEMS, servicesFromCatalog } from './catalog.js';
 import { DEFAULT_SETTINGS } from './defaults.js';
 
@@ -61,6 +61,13 @@ describe('link studia (slug)', () => {
     expect(slugify('Łódź Auto Spa – Żoliborz!')).toBe('lodz-auto-spa-zoliborz');
     expect(slugify('  ')).toBe('studio');
     expect(SLUG_RE.test(slugify('x'.repeat(80)))).toBe(true);
+  });
+  it('studio nie zajmie ścieżek strony (detaildesk.pl/zlecenie, /app…)', () => {
+    expect(safeSlug('Zlecenie')).toBe('zlecenie-studio');
+    expect(safeSlug('APP')).toBe('app-studio');
+    expect(safeSlug('Rejestracja')).toBe('rejestracja-studio');
+    expect(safeSlug('Auto Spa Kraków')).toBe('auto-spa-krakow');
+    for (const r of RESERVED_SLUGS) expect(RESERVED_SLUGS).not.toContain(safeSlug(r));
   });
   it('odrzuca niebezpieczne wartości', () => {
     for (const bad of ['', '-a', 'a-', 'A', 'a b', "a'b", '../x']) expect(SLUG_RE.test(bad)).toBe(false);

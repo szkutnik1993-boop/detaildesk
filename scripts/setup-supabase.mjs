@@ -9,7 +9,8 @@ import { execFileSync } from 'node:child_process';
 const E = process.env;
 const ref = E.PROJECT_REF;
 const token = E.SUPABASE_ACCESS_TOKEN;
-const base = (E.PUBLIC_BASE_URL || 'https://detaildesk.pl/').replace(/\/?$/, '/');
+const base = (E.PUBLIC_BASE_URL || 'https://app.detaildesk.pl/').replace(/\/?$/, '/'); // aplikacja studiów
+const site = (E.PUBLIC_SITE_URL || 'https://detaildesk.pl/').replace(/\/?$/, '/'); // strony klientów
 if (!ref || !token) throw new Error('Brak PROJECT_REF / SUPABASE_ACCESS_TOKEN');
 const steps = (E.STEP || 'keys,sql,owner,auth,secrets,functions,cron').split(',');
 
@@ -107,6 +108,7 @@ if (steps.includes('secrets')) {
     VAPID_PRIVATE_KEY: E.VAPID_PRIVATE_KEY,
     VAPID_SUBJECT: `mailto:${E.OWNER_EMAIL}`,
     PUBLIC_BASE_URL: base,
+    PUBLIC_SITE_URL: site,
     CRON_SECRET: cronSecret,
   };
   await mgmt('/secrets', { method: 'POST', body: JSON.stringify(Object.entries(secrets).filter(([, v]) => v).map(([name, value]) => ({ name, value }))) });

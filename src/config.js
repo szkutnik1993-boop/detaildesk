@@ -10,3 +10,10 @@ export const DEFAULT_STUDIO_SLUG = 'arc-detailing';
 
 // Kontakt do administratora platformy – pokazywany studiom (przedłużenie abonamentu, rozbudowa listy usług)
 export const PLATFORM_CONTACT = { name: 'Tomek – DetailDesk', email: 'arccardetailing@gmail.com' };
+
+// Adresy publiczne:
+// - aplikacja studiów i panel administratora,
+// - strony klientów: formularz rezerwacji (detaildesk.pl/<slug>), strona zlecenia, polityka prywatności.
+export const APP_URL = 'https://app.detaildesk.pl/';
+export const SITE_URL = 'https://detaildesk.pl/';
+export const bookingUrl = (slug) => `${SITE_URL}${slug}`;

@@ -18,11 +18,12 @@ export const cors = {
 export const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'content-type': 'application/json; charset=utf-8' } });
 
-export const appBase = () => env('PUBLIC_BASE_URL', 'https://detaildesk.pl/').replace(/\/?$/, '/');
+export const appBase = () => env('PUBLIC_BASE_URL', 'https://app.detaildesk.pl/').replace(/\/?$/, '/'); // aplikacja studiów
+export const siteBase = () => env('PUBLIC_SITE_URL', 'https://detaildesk.pl/').replace(/\/?$/, '/'); // strony klientów
 export const fnBase = () => `${env('SUPABASE_URL')}/functions/v1`;
-export const jobLink = (token) => `${appBase()}zlecenie/?t=${token}`;
+export const jobLink = (token) => `${siteBase()}zlecenie/?t=${token}`;
 export const icsLink = (token) => `${fnBase()}/public?action=ics&t=${token}`;
-export const bookingLink = (slug) => `${appBase()}umow/?s=${slug}`;
+export const bookingLink = (slug) => `${siteBase()}${slug}`;
 export const DEFAULT_SLUG = () => env('DEFAULT_STUDIO_SLUG', 'arc-detailing');
 
 export const doc = (row) =>

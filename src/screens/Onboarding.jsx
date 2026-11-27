@@ -6,7 +6,7 @@ import { SERVICE_CATALOG, servicesFromCatalog } from '../lib/catalog.js';
 import { structuredCloneSafe } from '../lib/defaults.js';
 import { updateMyStudio, uploadLogo } from '../lib/db.js';
 import { formatMoney } from '../lib/pricing.js';
-import { PLATFORM_CONTACT } from '../config.js';
+import { PLATFORM_CONTACT, bookingUrl } from '../config.js';
 
 // zmniejszenie logo do max 600 px (PNG – zachowuje przezroczystość)
 async function resizeLogo(file) {
@@ -56,7 +56,7 @@ export default function Onboarding() {
   });
   const logoRef = useRef();
   const setStudio = (k, v) => setS((x) => ({ ...x, studio: { ...x.studio, [k]: v } }));
-  const bookingUrl = new URL(`umow/?s=${studio.slug}`, document.baseURI.replace(/#.*$/, '')).toString();
+  const bookingLink = bookingUrl(studio.slug);
 
   const toggle = (id) =>
     setPicked((p) => {
@@ -196,7 +196,7 @@ export default function Onboarding() {
         <div className="card form">
           <div className="h3">Twój link dla klientów</div>
           <div className="small muted">Wstaw go na stronę www, Instagram i do wizytówki Google – klienci sami wybiorą usługi i zaproponują termin.</div>
-          <div className="link-box">{bookingUrl}</div>
+          <div className="link-box">{bookingLink}</div>
           <ul className="small ob-summary">
             <li>{s.studio.name} · nadawca e-maili: {fromName}</li>
             <li>{Object.keys(picked).length} usług w cenniku</li>

@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { resolve } from 'node:path';
 
 export default defineConfig({
-  base: './', // względne ścieżki: działa pod detaildesk.pl i pod każdym innym adresem
+  base: '/', // app.detaildesk.pl i detaildesk.pl – obie strony w katalogu głównym domeny
   build: {
     rollupOptions: {
       input: {

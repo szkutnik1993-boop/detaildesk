@@ -5,7 +5,7 @@ import { useData, useUI } from '../store.jsx';
 import { DEFAULT_SETTINGS, structuredCloneSafe } from '../lib/defaults.js';
 import { exportAll, importAll, myFeedback, uid, updateMyStudio, uploadLogo } from '../lib/db.js';
 import { studioStatus } from '../lib/subscription.js';
-import { PLATFORM_CONTACT } from '../config.js';
+import { PLATFORM_CONTACT, bookingUrl as bookingLinkFor } from '../config.js';
 import { ExtendNote } from './Onboarding.jsx';
 import { go } from '../router.js';
 import { daysBetween, fmtDateTime, todayISO } from '../lib/dates.js';
@@ -99,7 +99,7 @@ export default function Settings() {
   };
 
   const backupAge = data.lastBackup ? daysBetween(data.lastBackup.slice(0, 10), todayISO()) : null;
-  const bookingUrl = new URL(`umow/?s=${studio.slug}`, document.baseURI.replace(/#.*$/, '')).toString();
+  const bookingUrl = bookingLinkFor(studio.slug);
   const sub = studio.blocked ? { label: 'Zablokowane', state: 'expired', daysLeft: 0 } : studioStatus(studio);
   const sendFb = () =>
     ui.run('Wysyłam…', async () => {
