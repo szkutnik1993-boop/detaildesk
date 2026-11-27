@@ -14,9 +14,31 @@ const read = () => {
 
 // Logowanie: link + 6-cyfrowy kod w e-mailu.
 // Na iPhonie link z poczty otwiera Safari (a nie aplikację z ekranu początkowego), dlatego w aplikacji wpisujesz kod.
+// czy kod został wysłany w ciągu ostatnich 15 min (iOS potrafi przeładować aplikację, gdy przełączasz się do poczty)
+const SENT_KEY = 'dd-login-sent-at';
+const sentRecently = () => {
+  try {
+    return Date.now() - Number(localStorage.getItem(SENT_KEY) || 0) < 15 * 60 * 1000;
+  } catch {
+    return false;
+  }
+};
+const markSent = (on) => {
+  try {
+    if (on) localStorage.setItem(SENT_KEY, String(Date.now()));
+    else localStorage.removeItem(SENT_KEY);
+  } catch {
+    /* brak localStorage */
+  }
+};
+
 export default function Login() {
   const [email, setEmail] = useState(read);
-  const [sent, setSent] = useState(false);
+  const [sent, setSentState] = useState(() => !!read() && sentRecently());
+  const setSent = (v) => {
+    markSent(v);
+    setSentState(v);
+  };
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -46,6 +68,7 @@ export default function Login() {
     const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'email' });
     setBusy(false);
     if (error) setMsg('Nieprawidłowy lub wygasły kod.');
+    else markSent(false);
   };
 
   return (
@@ -72,6 +95,7 @@ export default function Login() {
           <button className="btn primary block" disabled={busy || code.length < 6}>
             <Icon name="check" /> Zaloguj
           </button>
+          <div className="small muted">Po zalogowaniu aplikacja zapamięta Cię na tym urządzeniu – kod nie będzie potrzebny przy kolejnym otwarciu.</div>
           <button type="button" className="link-btn small" onClick={() => setSent(false)}>Zmień e-mail / wyślij ponownie</button>
         </form>
       )}

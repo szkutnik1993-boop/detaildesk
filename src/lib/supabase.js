@@ -1,8 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_ANON_KEY, SUPABASE_URL, FUNCTIONS_URL } from '../config.js';
+import { authStorage, requestPersistentStorage } from './authStorage.js';
+
+requestPersistentStorage();
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' },
+  auth: {
+    persistSession: true, // sesja zostaje po zamknięciu aplikacji (odświeżana automatycznie)
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce',
+    storage: authStorage, // domyślny klucz – obecne sesje zostają zachowane
+  },
 });
 
 // wywołanie funkcji tylko dla właściciela (z tokenem sesji)
