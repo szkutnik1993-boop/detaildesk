@@ -109,6 +109,16 @@ try {
   ok(!(await B.c.storage.from('photos').upload(photoPath, png, { contentType: 'image/png' })).error, 'studio B wgrywa zdjęcie do swojego folderu');
   const arcId = (await A.c.rpc('my_studio')).data.id;
   ok(!!(await B.c.storage.from('photos').upload(`${arcId}/hack-${ts}.png`, png, { contentType: 'image/png' })).error, 'studio B nie wgra zdjęcia do folderu innego studia');
+  // logo: zapis do własnego folderu (także nadpisanie), publiczny odczyt, brak zapisu do cudzego folderu
+  const logoUp = await B.c.storage.from('logos').upload(`${studioB}/logo-test.png`, png, { contentType: 'image/png', upsert: true });
+  ok(!logoUp.error, 'studio wgrywa logo', logoUp.error?.message || '');
+  ok(!(await B.c.storage.from('logos').upload(`${studioB}/logo-test.png`, png, { contentType: 'image/png', upsert: true })).error, 'studio podmienia logo');
+  const logoUrl = B.c.storage.from('logos').getPublicUrl(`${studioB}/logo-test.png`).data.publicUrl;
+  ok((await fetch(logoUrl)).status === 200, 'logo dostępne publicznie (formularz, e-maile)');
+  ok(!!(await B.c.storage.from('logos').upload(`${arcId}/hack.png`, png, { contentType: 'image/png' })).error, 'studio nie podmieni logo innego studia');
+  ok(!(await B.c.rpc('update_my_studio', { p_logo_url: logoUrl })).error, 'adres logo zapisany w studiu');
+  ok((await j(await fetch(`${F}/public?action=config&s=${slug}`))).body.studio.logoUrl === logoUrl, 'formularz /umow zwraca logo studia');
+
   const signedAdmin = await A.c.storage.from('photos').createSignedUrl(photoPath, 60);
   ok(!!signedAdmin.error || !signedAdmin.data?.signedUrl, 'administrator nie otworzy zdjęcia klienta studia B');
   const listAdmin = await A.c.storage.from('photos').list(studioB);
@@ -205,13 +215,15 @@ try {
 } finally {
   if (studioB) {
     // pliki – przez API Storage (SQL nie może usuwać plików), potem studio (reszta usuwa się kaskadowo)
-    const files = await sql(`select name from storage.objects where bucket_id = 'photos' and name like '${studioB}/%'`).catch(() => []);
-    if (files.length) {
-      await fetch(`${URL_}/storage/v1/object/photos`, {
-        method: 'DELETE',
-        headers: { apikey: E.SERVICE_KEY, Authorization: `Bearer ${E.SERVICE_KEY}`, 'content-type': 'application/json' },
-        body: JSON.stringify({ prefixes: files.map((f) => f.name) }),
-      });
+    for (const bucket of ['photos', 'logos']) {
+      const files = await sql(`select name from storage.objects where bucket_id = '${bucket}' and name like '${studioB}/%'`).catch(() => []);
+      if (files.length) {
+        await fetch(`${URL_}/storage/v1/object/${bucket}`, {
+          method: 'DELETE',
+          headers: { apikey: E.SERVICE_KEY, Authorization: `Bearer ${E.SERVICE_KEY}`, 'content-type': 'application/json' },
+          body: JSON.stringify({ prefixes: files.map((f) => f.name) }),
+        });
+      }
     }
     await sql(`delete from public.studios where id = '${studioB}'`).catch((e) => console.error(e.message));
   }
