@@ -17,7 +17,7 @@ export const cors = {
 export const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'content-type': 'application/json; charset=utf-8' } });
 
-export const appBase = () => env('PUBLIC_BASE_URL', 'https://szkutnik1993-boop.github.io/detaildesk/').replace(/\/?$/, '/');
+export const appBase = () => env('PUBLIC_BASE_URL', 'https://arc-app.arcdetailing.pl/').replace(/\/?$/, '/');
 export const fnBase = () => `${env('SUPABASE_URL')}/functions/v1`;
 export const jobLink = (token) => `${appBase()}zlecenie/?t=${token}`;
 export const icsLink = (token) => `${fnBase()}/public?action=ics&t=${token}`;

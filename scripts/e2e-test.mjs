@@ -131,4 +131,4 @@ if (!E.KEEP) {
   await owner.from('cars').delete().eq('id', job.carId);
   console.log('(zlecenie testowe usunięte)');
 }
-console.log(`\nWSZYSTKO OK – ${pass} sprawdzeń. Link testowy: https://szkutnik1993-boop.github.io/detaildesk/zlecenie/?t=${token}`);
+console.log(`\nWSZYSTKO OK – ${pass} sprawdzeń. Link testowy: https://arc-app.arcdetailing.pl/zlecenie/?t=${token}`);

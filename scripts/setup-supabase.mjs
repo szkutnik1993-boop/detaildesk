@@ -9,7 +9,7 @@ import { execFileSync } from 'node:child_process';
 const E = process.env;
 const ref = E.PROJECT_REF;
 const token = E.SUPABASE_ACCESS_TOKEN;
-const base = (E.PUBLIC_BASE_URL || 'https://szkutnik1993-boop.github.io/detaildesk/').replace(/\/?$/, '/');
+const base = (E.PUBLIC_BASE_URL || 'https://arc-app.arcdetailing.pl/').replace(/\/?$/, '/');
 if (!ref || !token) throw new Error('Brak PROJECT_REF / SUPABASE_ACCESS_TOKEN');
 const steps = (E.STEP || 'keys,sql,owner,auth,secrets,functions,cron').split(',');
 
