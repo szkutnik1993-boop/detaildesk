@@ -53,6 +53,7 @@ export function applyTransition(job, to, opts = {}) {
     const price = Number(opts.finalPrice);
     if (!Number.isFinite(price) || price <= 0) throw new Error('Wpisz kwotę końcową.');
     Object.assign(next, { finalPrice: Math.round(price), doneDate: opts.doneDate || at.slice(0, 10), readyAt: at });
+    Object.assign(next, paymentPatch(opts, at));
     notify = 'ready';
   }
   if (to === 'odebrane') Object.assign(next, { handedOverAt: at });
@@ -64,3 +65,21 @@ export function applyTransition(job, to, opts = {}) {
 export const isActive = (s) => s === 'w_trakcie' || s === 'gotowe';
 // zlecenia wykonane (historia, przypomnienia o powłoce)
 export const isDone = (s) => s === 'gotowe' || s === 'odebrane';
+
+// Płatność za wizytę (zestawienie „Finanse” w aplikacji studia)
+export const PAYMENT_METHODS = { gotowka: 'Gotówka', karta: 'Karta', przelew: 'Przelew', blik: 'BLIK' };
+export const PAYMENT_STATUSES = { oplacone: 'Opłacone', nieoplacone: 'Nieopłacone' };
+
+export function paymentPatch(opts = {}, at = new Date().toISOString()) {
+  const out = {};
+  if (opts.paymentMethod !== undefined) {
+    if (opts.paymentMethod && !PAYMENT_METHODS[opts.paymentMethod]) throw new Error('Nieznana forma płatności.');
+    out.paymentMethod = opts.paymentMethod || null;
+  }
+  if (opts.paymentStatus !== undefined) {
+    if (!PAYMENT_STATUSES[opts.paymentStatus]) throw new Error('Nieznany status płatności.');
+    out.paymentStatus = opts.paymentStatus;
+    out.paidAt = opts.paymentStatus === 'oplacone' ? opts.paidAt || at : null;
+  }
+  return out;
+}

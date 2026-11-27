@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import Icon from '../components/Icon.jsx';
-import { Field, Header, PhotoButtons, PhotoSet, Section, StatusPill, Thumb } from '../components/ui.jsx';
+import { Field, Header, PhotoButtons, PhotoSet, Section, Segmented, StatusPill, Thumb } from '../components/ui.jsx';
 import { useData, useUI } from '../store.jsx';
 import { go, replace } from '../router.js';
 import { fmtDate, fmtDateTime, nowISO, todayISO } from '../lib/dates.js';
 import { carLabel } from '../lib/reminders.js';
 import { calcQuote, fillTemplate, formatMoney } from '../lib/pricing.js';
-import { applyTransition } from '../lib/status.js';
+import { PAYMENT_METHODS, PAYMENT_STATUSES, applyTransition, paymentPatch } from '../lib/status.js';
 import { fmtTermPL } from '../lib/ics.js';
 import { parseNum, smsLink, telLink } from '../lib/utils.js';
 import { clientJobUrl, ownerCall } from '../lib/supabase.js';
@@ -32,7 +32,10 @@ export default function JobEdit({ id, query }) {
       }
   );
   const [notice, setNotice] = useState(null);
-  const [finalPrice, setFinalPrice] = useState('');
+  // kwota końcowa: domyślnie cena z wyceny / suma usług (do edycji)
+  const [finalPrice, setFinalPrice] = useState(() => String(existing?.finalPrice || existing?.price || ''));
+  const [payMethod, setPayMethod] = useState(existing?.paymentMethod || 'gotowka');
+  const [payStatus, setPayStatus] = useState(existing?.paymentStatus || 'oplacone');
   const [stage, setStage] = useState(s.stages[0]);
   const [stageCaption, setStageCaption] = useState('');
   const stagesRef = useRef();
@@ -237,16 +240,45 @@ export default function JobEdit({ id, query }) {
         <div ref={readyRef}>
           <Section title="Auto gotowe">
             <div className="card form">
-              <Field label="Kwota końcowa (zł)">
+              <Field label="Kwota końcowa (zł)" hint={job.price ? `Z wyceny: ${formatMoney(job.price)} zł` : undefined}>
                 <input inputMode="numeric" placeholder={String(total || job.price || '')} value={finalPrice} onChange={(e) => setFinalPrice(e.target.value.replace(/[^\d]/g, ''))} />
               </Field>
-              <button className="btn primary block big-one" onClick={() => transition('gotowe', { finalPrice: parseNum(finalPrice || total || job.price) }, 'Zapisuję…')}>
+              <PaymentFields method={payMethod} setMethod={setPayMethod} status={payStatus} setStatus={setPayStatus} />
+              <button
+                className="btn primary block big-one"
+                onClick={() => transition('gotowe', { finalPrice: parseNum(finalPrice || total || job.price), paymentMethod: payMethod, paymentStatus: payStatus }, 'Zapisuję…')}
+              >
                 <Icon name="check" /> Auto gotowe – powiadom klienta
               </button>
               <div className="small muted">Klient dostanie e-mail „Zapraszamy po odbiór” z kwotą; strona zlecenia pokaże to samo.</div>
             </div>
           </Section>
         </div>
+      )}
+
+      {(job.status === 'gotowe' || job.status === 'odebrane') && (
+        <Section title="Płatność">
+          <div className="card form">
+            <div className="total-row">
+              <span>Kwota końcowa</span>
+              <strong className="gold">{formatMoney(job.finalPrice || job.price)} zł</strong>
+            </div>
+            <PaymentFields method={payMethod} setMethod={setPayMethod} status={payStatus} setStatus={setPayStatus} />
+            <button
+              className="btn block"
+              style={{ marginTop: 0 }}
+              disabled={payMethod === (job.paymentMethod || null) && payStatus === job.paymentStatus}
+              onClick={() =>
+                ui.run('Zapisuję płatność…', async () => {
+                  await persist({ ...job, ...paymentPatch({ paymentMethod: payMethod, paymentStatus: payStatus }) });
+                  ui.toast(payStatus === 'oplacone' ? 'Opłacone ✓' : 'Zapisano: nieopłacone');
+                })
+              }
+            >
+              <Icon name="check" /> Zapisz płatność
+            </button>
+          </div>
+        </Section>
       )}
 
       {job.status === 'gotowe' && (
@@ -379,3 +411,23 @@ export default function JobEdit({ id, query }) {
   );
 }
 
+
+// forma płatności i status – przy zakończeniu wizyty
+function PaymentFields({ method, setMethod, status, setStatus }) {
+  return (
+    <>
+      <div className="field">
+        <span className="field-label">Forma płatności</span>
+        <div className="chips wrap" style={{ marginBottom: 0 }}>
+          {Object.entries(PAYMENT_METHODS).map(([k, l]) => (
+            <button key={k} type="button" className={method === k ? 'on' : ''} onClick={() => setMethod(k)} aria-pressed={method === k}>{l}</button>
+          ))}
+        </div>
+      </div>
+      <div className="field">
+        <span className="field-label">Status</span>
+        <Segmented options={Object.entries(PAYMENT_STATUSES).map(([value, label]) => ({ value, label }))} value={status} onChange={setStatus} />
+      </div>
+    </>
+  );
+}

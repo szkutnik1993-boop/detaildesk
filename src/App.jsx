@@ -18,12 +18,14 @@ import Settings from './screens/Settings.jsx';
 import Onboarding from './screens/Onboarding.jsx';
 import Admin from './screens/Admin.jsx';
 import InstallGuide from './screens/InstallGuide.jsx';
+import Finance from './screens/Finance.jsx';
 
 const TABS = [
   { to: '/', label: 'Dziś', icon: 'today', match: (p) => p[0] === undefined },
   { to: '/calendar', label: 'Kalendarz', icon: 'calendar', match: (p) => p[0] === 'calendar' || p[0] === 'job' },
   { to: '/cars', label: 'Auta i klienci', icon: 'car', match: (p) => p[0] === 'cars' || p[0] === 'car' },
   { to: '/quotes', label: 'Wyceny', icon: 'quote', match: (p) => p[0] === 'quotes' || p[0] === 'quote' },
+  { to: '/finanse', label: 'Finanse', icon: 'chart', match: (p) => p[0] === 'finanse' },
 ];
 
 function screen({ parts: p, query }, studio) {
@@ -42,6 +44,7 @@ function screen({ parts: p, query }, studio) {
   if (a === 'settings') return <Settings />;
   if (a === 'admin' && studio?.is_admin) return <Admin />;
   if (a === 'instalacja') return <InstallGuide />;
+  if (a === 'finanse') return <Finance />;
   return <Today />;
 }
 
