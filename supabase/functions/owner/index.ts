@@ -2,7 +2,7 @@
 // wysyłka e-maili do klienta (potwierdzenie terminu, auto gotowe) i test powiadomień push.
 import { createClient } from 'npm:@supabase/supabase-js@2.49.4';
 import { admin, carLabel, cors, doc, env, getSettings, json, jobLink, icsLink, sendEmail, sendPushAll, logEmail, appBase } from '../_shared/server.js';
-import { clientConfirmed, clientReady } from '../_shared/emails.js';
+import { clientConfirmed, clientProtocol, clientReady } from '../_shared/emails.js';
 import { buildIcs } from '../_shared/ics.js';
 
 const b64 = (s) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
@@ -27,6 +27,27 @@ Deno.serve(async (req) => {
     if (body.action === 'test-push') {
       const r = await sendPushAll(db, { title: 'DetailDesk', body: 'Powiadomienia działają ✓', url: appBase() });
       return json({ ok: true, ...r });
+    }
+
+    if (body.action === 'send-protocol') {
+      // PDF generowany w aplikacji (z podpisem i zdjęciami) – serwer tylko dołącza go do e-maila
+      const pdf = String(body.pdfBase64 || '');
+      if (!pdf || pdf.length > 30_000_000) return json({ ok: false, error: 'Nieprawidłowy plik PDF' }, 400);
+      const { data: prow } = await db.from('protocols').select('*').eq('id', body.protocolId).maybeSingle();
+      if (!prow) return json({ ok: false, error: 'Nie znaleziono protokołu' }, 404);
+      const { data: row } = await db.from('jobs').select('*').eq('id', prow.data.jobId).maybeSingle();
+      const job = row ? doc(row) : { services: [] };
+      const settings = await getSettings(db);
+      const { data: carRow } = await db.from('cars').select('data').eq('id', prow.data.carId).maybeSingle();
+      const to = job.client?.email || carRow?.data?.ownerEmail;
+      if (!to) return json({ ok: false, error: 'Klient nie ma adresu e-mail – uzupełnij go w danych auta' }, 400);
+      const mail = clientProtocol({ job, carLabel: carLabel(carRow?.data), plate: carRow?.data?.plate, studio: settings.studio, jobLink: row ? jobLink(row.token) : appBase() });
+      const filename = String(body.filename || 'protokol-przyjecia.pdf').replace(/[^\w.-]/g, '_');
+      const r = await sendEmail({ to, ...mail, attachments: [{ filename, content: pdf, content_type: 'application/pdf' }] });
+      const sent = { to, at: new Date().toISOString(), id: r?.id || null };
+      await db.from('protocols').update({ data: { ...prow.data, emailed: [...(prow.data.emailed || []), sent] }, updated_at: sent.at }).eq('id', prow.id);
+      if (row) await logEmail(db, row, { type: 'protocol', to, id: r?.id || null });
+      return json({ ok: true, to, skipped: r?.skipped || null });
     }
 
     if (body.action === 'notify') {

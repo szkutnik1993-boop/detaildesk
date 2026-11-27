@@ -92,6 +92,24 @@ export function clientReminder({ job, carLabel, studio, jobLink, icsLink }) {
   return { subject, html };
 }
 
+export function clientProtocol({ job, carLabel, studio, jobLink, plate }) {
+  const subject = `Protokół przyjęcia pojazdu – ${carLabel} – ${studio.name}`;
+  const html = layout(
+    studio,
+    `<h2 style="margin:0 0 6px;font-size:20px">Dzień dobry${job.client?.name ? ` ${h(job.client.name.split(' ')[0])}` : ''}!</h2>
+    <p style="margin:0">Dziękuję za pozostawienie auta w ${h(studio.name)}. W załączniku przesyłam protokół przyjęcia pojazdu (PDF) – z opisem stanu auta, pomiarami lakieru i zdjęciami.</p>
+    ${box([
+      ['Auto', h(carLabel)],
+      ...(plate ? [['Nr rejestracyjny', h(plate)]] : []),
+    ])}
+    <b>Zakres usług:</b>${servicesList(job)}
+    <p>Na stronie zlecenia na bieżąco zobaczysz status i zdjęcia z kolejnych etapów pracy.</p>
+    ${button(jobLink, 'Podgląd etapów pracy')}
+    <p>Pozdrawiam,<br><b>${h(studio.signature)}</b> – ${h(studio.name)}</p>`
+  );
+  return { subject, html };
+}
+
 export function clientReady({ job, carLabel, studio, jobLink }) {
   const subject = `Zapraszamy po odbiór – ${carLabel} jest gotowe`;
   const html = layout(

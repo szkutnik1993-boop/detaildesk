@@ -21,6 +21,7 @@ function Booking() {
   const [errors, setErrors] = useState({});
   const [sending, setSending] = useState(false);
   const [sendErr, setSendErr] = useState(null);
+  const [done, setDone] = useState(null);
   const set = (patch) => setF((x) => ({ ...x, ...patch }));
 
   useEffect(() => {
@@ -37,6 +38,36 @@ function Booking() {
   if (loadErr) return <Shell><div className="empty">Nie udało się wczytać cennika. Odśwież stronę lub zadzwoń.</div></Shell>;
   if (!cfg) return <Shell><div className="center-load"><div className="spinner" /></div></Shell>;
 
+  if (done)
+    return (
+      <Shell studio={cfg.studio}>
+        <div className="c-done">
+          <div className="c-done-icon"><Icon name="check" size={34} /></div>
+          <h1>Dziękujemy{done.name ? `, ${done.name}` : ''}!</h1>
+          <p>Zapytanie zostało wysłane.</p>
+        </div>
+        <div className="card c-next">
+          <div className="h3">Co dalej?</div>
+          <p>
+            Potwierdzenie terminu otrzymasz e-mailem na <b className="gold">{done.email}</b> – wraz z linkiem do podglądu etapów pracy detailera, na którym na
+            bieżąco zobaczysz status i zdjęcia swojego auta.
+          </p>
+          <p className="small muted">Jeśli nie widzisz wiadomości, sprawdź folder Spam lub Oferty.</p>
+        </div>
+        <div className="card">
+          <div className="kv">
+            <div className="full"><span>Usługi</span>{done.items.map((i) => i.name).join(', ')}</div>
+            <div className="full"><span>Proponowane terminy</span>{done.slots.map((s) => `${fmtDayLong(s.date)}${s.time ? ', ' + s.time : ''}`).join(' · ')}</div>
+            <div><span>Cena orientacyjna</span>ok. {formatMoney(done.total)} zł</div>
+          </div>
+          <div className="small muted" style={{ marginTop: 10 }}>Cena potwierdzana po oględzinach auta.</div>
+        </div>
+        {cfg.studio.phone && (
+          <a className="btn block" href={`tel:${cfg.studio.phone.replace(/[^\d+]/g, '')}`}><Icon name="phone" /> Pilna sprawa? Zadzwoń</a>
+        )}
+      </Shell>
+    );
+
   const toggle = (id) => set({ serviceIds: f.serviceIds.includes(id) ? f.serviceIds.filter((x) => x !== id) : [...f.serviceIds, id] });
   const setSlot = (i, patch) => set({ slots: f.slots.map((s, k) => (k === i ? { ...s, ...patch } : s)) });
 
@@ -51,8 +82,9 @@ function Booking() {
     }
     setSending(true);
     try {
-      const r = await publicPost('request', f);
-      window.location.href = `../zlecenie/?t=${r.token}&nowe=1`;
+      await publicPost('request', f);
+      setDone({ name: f.name.trim().split(' ')[0], email: f.email.trim(), total: calc.total, items: calc.items, slots: f.slots });
+      window.scrollTo(0, 0);
     } catch (err) {
       setSending(false);
       if (err.errors) setErrors(err.errors);

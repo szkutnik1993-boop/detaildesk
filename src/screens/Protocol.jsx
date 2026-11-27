@@ -7,6 +7,7 @@ import { fmtDateTime } from '../lib/dates.js';
 import { carLabel } from '../lib/reminders.js';
 import { formatMoney } from '../lib/pricing.js';
 import { protocolPdf } from '../lib/pdf.js';
+import { ownerCall } from '../lib/supabase.js';
 
 export default function Protocol({ id }) {
   const { data, api } = useData();
@@ -16,11 +17,28 @@ export default function Protocol({ id }) {
   const car = data.cars.find((c) => c.id === p.carId);
   const job = data.jobs.find((j) => j.id === p.jobId);
 
-  const pdf = () =>
-    ui.run('Tworzę PDF protokołu…', async () => {
-      const photos = {};
-      for (const d of p.damages || []) photos[d.photoId] = await loadPhoto(d.photoId);
-      ui.showFile(await protocolPdf(p, car, data.settings, photos, job?.services || []));
+  const clientEmail = job?.client?.email || car?.ownerEmail;
+  const lastSent = (p.emailed || []).slice(-1)[0];
+
+  const buildPdf = async () => {
+    const photos = {};
+    for (const d of p.damages || []) photos[d.photoId] = await loadPhoto(d.photoId);
+    return protocolPdf(p, car, data.settings, photos, job?.services || []);
+  };
+
+  const pdf = () => ui.run('Tworzę PDF protokołu…', async () => ui.showFile(await buildPdf()));
+
+  const sendEmail = () =>
+    ui.run('Wysyłam protokół e-mailem…', async () => {
+      const file = await buildPdf();
+      const dataUrl = await new Promise((res) => {
+        const fr = new FileReader();
+        fr.onload = () => res(fr.result);
+        fr.readAsDataURL(file.blob);
+      });
+      const r = await ownerCall({ action: 'send-protocol', protocolId: p.id, filename: file.filename, pdfBase64: String(dataUrl).split(',')[1] });
+      await api.reload();
+      ui.toast(r.skipped ? `Nie wysłano: ${r.skipped}` : `Protokół wysłany do ${r.to} ✓`);
     });
 
   const remove = async () => {
@@ -34,9 +52,27 @@ export default function Protocol({ id }) {
     <div className="screen">
       <Header title="Protokół przyjęcia" sub={fmtDateTime(p.createdAt)} backTo="/" />
 
-      <button className="btn primary block big-one" onClick={pdf}>
-        <Icon name="file" /> PDF protokołu – wyślij klientowi
-      </button>
+      <div className="card form">
+        {clientEmail ? (
+          <button className="btn primary block big-one" style={{ margin: 0 }} onClick={sendEmail}>
+            <Icon name="sms" /> {lastSent ? 'Wyślij ponownie mailem' : 'Wyślij mailem do klienta'}
+          </button>
+        ) : (
+          <button className="btn primary block big-one" style={{ margin: 0 }} onClick={() => car && go(`/car/${car.id}/edit`)}>
+            <Icon name="edit" /> Dodaj e-mail klienta, aby wysłać
+          </button>
+        )}
+        <div className="small muted">
+          {lastSent
+            ? `Wysłano do ${lastSent.to} · ${fmtDateTime(lastSent.at)}`
+            : clientEmail
+              ? `PDF z podpisem i zdjęciami trafi na ${clientEmail} razem z linkiem do podglądu etapów pracy.`
+              : 'Klient nie ma adresu e-mail w danych auta.'}
+        </div>
+        <button className="btn block ghost" style={{ marginTop: 0 }} onClick={pdf}>
+          <Icon name="file" /> Podgląd PDF / udostępnij inaczej
+        </button>
+      </div>
 
       <div className="card">
         <div className="kv">

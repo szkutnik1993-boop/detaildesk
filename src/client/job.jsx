@@ -42,7 +42,7 @@ function JobPage() {
   return (
     <Shell studio={studio}>
       {isNew && job.status === 'zapytanie' && (
-        <div className="notice ok"><Icon name="check" /><span>Dziękuję! Zapytanie wysłane. Zachowaj ten link – tu zobaczysz potwierdzenie terminu i postęp prac.</span></div>
+        <div className="notice ok"><Icon name="check" /><span>Dziękujemy! Zapytanie wysłane. Potwierdzenie terminu otrzymasz e-mailem wraz z linkiem do podglądu etapów pracy.</span></div>
       )}
       <div className="c-hero">
         <div className="muted small">{job.clientName ? `${job.clientName}, Twoje zlecenie` : 'Twoje zlecenie'}</div>

@@ -97,6 +97,19 @@ ok(cr.status === 200 && mine && !mine.error, 'przypomnienie o jutrzejszej wizyci
 const cr2 = await j(await fetch(`${F}/cron`, { method: 'POST', headers: { 'x-cron-secret': E.CRON_SECRET, 'content-type': 'application/json' }, body: JSON.stringify({ date: tomorrow }) }));
 ok(!(cr2.body?.sent || []).some((s) => s.id === job.id), 'przypomnienie nie wysyła się drugi raz');
 
+// 5b. Protokół przyjęcia wysłany klientowi e-mailem (PDF w załączniku)
+const { data: prot, error: pErr } = await owner
+  .from('protocols')
+  .insert({ data: { carId: job.carId, jobId: job.id, mileage: '85000', paint: { hood: '120' }, damages: [], notes: 'test', createdAt: new Date().toISOString() } })
+  .select()
+  .single();
+if (pErr) throw pErr;
+const tinyPdf = Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj 3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF').toString('base64');
+const sp = await call({ action: 'send-protocol', protocolId: prot.id, filename: 'protokol-test.pdf', pdfBase64: tinyPdf });
+ok(sp.status === 200 && sp.body.ok && !sp.body.skipped, 'protokół PDF wysłany mailem do klienta', sp.body.to || sp.body.error);
+const { data: protAfter } = await owner.from('protocols').select('data').eq('id', prot.id).single();
+ok((protAfter.data.emailed || []).length === 1, 'aplikacja zapisała, kiedy i dokąd wysłano protokół');
+
 // 6. Przyjęcie + zdjęcie etapu widoczne dla klienta
 ({ data: [row] } = await owner.from('jobs').select('*').eq('id', job.id));
 job = applyTransition({ ...row.data, id: row.id }, 'w_trakcie').job;
@@ -127,6 +140,7 @@ ok(v.job.status === 'odebrane', 'odebrane');
 // sprzątanie
 if (!E.KEEP) {
   await owner.storage.from('photos').remove([path]);
+  await owner.from('protocols').delete().eq('id', prot.id);
   await owner.from('jobs').delete().eq('id', job.id);
   await owner.from('cars').delete().eq('id', job.carId);
   console.log('(zlecenie testowe usunięte)');
